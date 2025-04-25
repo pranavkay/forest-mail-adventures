@@ -1,15 +1,12 @@
-
 import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { EmailList } from '@/components/EmailList';
-import { ContactList } from '@/components/ContactList';
 import { ComposeEmail } from '@/components/ComposeEmail';
 import { AnimalGuide } from '@/components/AnimalGuide';
 
 const Index = () => {
   const [activeGuide, setActiveGuide] = useState('new-email');
   
-  // Cycle through guides for demonstration purposes
   useEffect(() => {
     const guideOrder = ['new-email', 'folders', 'search'];
     let currentIndex = 0;
@@ -17,7 +14,7 @@ const Index = () => {
     const interval = setInterval(() => {
       currentIndex = (currentIndex + 1) % guideOrder.length;
       setActiveGuide(guideOrder[currentIndex]);
-    }, 15000); // Change guide every 15 seconds
+    }, 15000);
     
     return () => clearInterval(interval);
   }, []);
@@ -44,14 +41,8 @@ const Index = () => {
             </div>
           </header>
           
-          <main className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <EmailList />
-            </div>
-            
-            <div className="md:col-span-1">
-              <ContactList />
-            </div>
+          <main>
+            <EmailList />
           </main>
         </div>
       </div>

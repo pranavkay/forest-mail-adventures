@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { folders } from '@/data/mockData';
-import { Archive, Bird, Book, Leaf, Menu, Trash2 } from 'lucide-react';
+import { Archive, Bird, Book, Contact, Leaf, Mail, Menu, Trash2 } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 
 const getIconComponent = (iconName: string | undefined) => {
   switch (iconName) {
@@ -24,6 +25,12 @@ const getIconComponent = (iconName: string | undefined) => {
 export const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState('inbox');
+  const location = useLocation();
+
+  const mainLinks = [
+    { id: 'home', name: 'Forest Home', icon: <Mail className="w-5 h-5" />, path: '/' },
+    { id: 'contacts', name: 'Woodland Friends', icon: <Contact className="w-5 h-5" />, path: '/contacts' },
+  ];
 
   return (
     <div 
@@ -47,6 +54,41 @@ export const Sidebar = () => {
       <div className="mt-8">
         <div className={cn(
           "px-4 mb-2", 
+          collapsed ? "text-center" : "text-left"
+        )}>
+          {!collapsed && (
+            <span className="text-sidebar-foreground text-sm font-semibold">
+              Main Paths
+            </span>
+          )}
+        </div>
+
+        <nav className="space-y-1 px-2">
+          {mainLinks.map((link) => (
+            <Link
+              key={link.id}
+              to={link.path}
+              className={cn(
+                'w-full flex items-center p-2 rounded-xl transition-colors',
+                location.pathname === link.path
+                  ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent',
+                collapsed ? 'justify-center' : 'justify-start'
+              )}
+            >
+              <div className="flex items-center justify-center">
+                {link.icon}
+              </div>
+              
+              {!collapsed && (
+                <span className="ml-3 text-sm">{link.name}</span>
+              )}
+            </Link>
+          ))}
+        </nav>
+
+        <div className={cn(
+          "px-4 mb-2 mt-6", 
           collapsed ? "text-center" : "text-left"
         )}>
           {!collapsed && (

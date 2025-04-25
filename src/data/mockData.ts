@@ -2,6 +2,7 @@
 export interface Contact {
   id: string;
   name: string;
+  woodlandName: string;
   email: string;
   avatar: string;
   animal: 'fox' | 'rabbit' | 'owl' | 'squirrel' | 'cat' | 'dog' | 'bird';
@@ -26,35 +27,40 @@ export interface Folder {
 export const contacts: Contact[] = [
   {
     id: '1',
-    name: 'Fiona Fox',
-    email: 'fiona@forest-mail.com',
+    name: 'Felix Thompson',
+    woodlandName: 'Fiona Fox',
+    email: 'felix@forest-mail.com',
     avatar: '/avatar-fox.png',
     animal: 'fox'
   },
   {
     id: '2',
-    name: 'Ruby Rabbit',
-    email: 'ruby@forest-mail.com',
+    name: 'Rachel Bennett',
+    woodlandName: 'Ruby Rabbit',
+    email: 'rachel@forest-mail.com',
     avatar: '/avatar-rabbit.png',
     animal: 'rabbit'
   },
   {
     id: '3',
-    name: 'Oliver Owl',
+    name: 'Oliver Chen',
+    woodlandName: 'Oliver Owl',
     email: 'oliver@forest-mail.com',
     avatar: '/avatar-owl.png',
     animal: 'owl'
   },
   {
     id: '4',
-    name: 'Sam Squirrel',
-    email: 'sam@forest-mail.com',
+    name: 'Sarah Parker',
+    woodlandName: 'Sam Squirrel',
+    email: 'sarah@forest-mail.com',
     avatar: '/avatar-squirrel.png',
     animal: 'squirrel'
   },
   {
     id: '5',
-    name: 'Clara Cat',
+    name: 'Clara Johnson',
+    woodlandName: 'Clara Cat',
     email: 'clara@forest-mail.com',
     avatar: '/avatar-cat.png',
     animal: 'cat'

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { emails } from '@/data/mockData';
@@ -67,6 +66,7 @@ const EmailCard = ({ email, onClick }: { email: typeof emails[0], onClick: () =>
           </div>
           <div>
             <div className="text-sm font-medium">{email.from.name}</div>
+            <div className="text-xs text-forest-bark/60">as {email.from.woodlandName}</div>
             <div className="text-xs text-forest-bark/70">{email.subject}</div>
           </div>
         </div>
@@ -100,6 +100,7 @@ const EmailDetail = ({ email, onBack }: { email: typeof emails[0] | undefined, o
             </div>
             <div>
               <div className="font-medium">{email.from.name}</div>
+              <div className="text-xs text-forest-bark/60">as {email.from.woodlandName}</div>
               <div className="text-xs text-forest-bark/70">{email.from.email}</div>
             </div>
           </div>
