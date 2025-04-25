@@ -65,8 +65,8 @@ const EmailCard = ({ email, onClick }: { email: typeof emails[0], onClick: () =>
             {email.from.name.charAt(0)}
           </div>
           <div>
-            <div className="text-sm font-medium">{email.from.name}</div>
-            <div className="text-xs text-forest-bark/60">as {email.from.woodlandName}</div>
+            <div className="text-sm font-semibold text-forest-bark">{email.from.woodlandName}</div>
+            <div className="text-xs text-forest-bark/70">{email.from.name}</div>
             <div className="text-xs text-forest-bark/70">{email.subject}</div>
           </div>
         </div>
