@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { emails } from '@/data/mockData';
 import { format } from 'date-fns';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 
 export const EmailList = () => {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
@@ -65,8 +66,14 @@ const EmailCard = ({ email, onClick }: { email: typeof emails[0], onClick: () =>
             {email.from.name.charAt(0)}
           </div>
           <div>
-            <div className="text-sm font-semibold text-forest-bark">{email.from.woodlandName}</div>
-            <div className="text-xs text-forest-bark/70">{email.from.name}</div>
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <div className="text-sm font-semibold text-forest-bark">{email.from.woodlandName}</div>
+              </HoverCardTrigger>
+              <HoverCardContent className="bg-forest-cream text-forest-bark shadow-lg rounded-xl p-3">
+                <div className="text-sm">{email.from.name}</div>
+              </HoverCardContent>
+            </HoverCard>
             <div className="text-xs text-forest-bark/70">{email.subject}</div>
           </div>
         </div>
