@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { contacts, Contact } from '@/data/mockData';
-import { Bird, Cat, Dog, Fox, Leaf, Mail, Phone } from 'lucide-react';
+import { Bird, Cat, Dog, Leaf, Mail, Phone } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
