@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
@@ -14,6 +15,8 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const location = useLocation();
   const currentFolder = new URLSearchParams(location.search).get('folder') || 'inbox';
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   
   useEffect(() => {
     const guideOrder = ['new-email', 'folders', 'search'];
@@ -43,6 +46,10 @@ const Index = () => {
     e.preventDefault();
     console.log('Searching for:', searchQuery);
     // We'll implement actual search functionality later
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
   
   return (
@@ -76,7 +83,13 @@ const Index = () => {
           </header>
           
           <main>
-            <EmailList folderId={currentFolder} searchQuery={searchQuery} />
+            <EmailList 
+              folderId={currentFolder} 
+              searchQuery={searchQuery} 
+              page={page}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+            />
           </main>
         </div>
       </div>

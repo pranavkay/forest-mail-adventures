@@ -1,5 +1,69 @@
+// Import types from our types file instead of creating circular references
+import { Contact, Email } from '@/types/email';
+
+// Mock folders data
+export const folders = [
+  { id: 'inbox', name: 'Inbox', icon: 'leaf', count: 3 },
+  { id: 'sent', name: 'Sent Butterflies', icon: 'bird', count: 5 },
+  { id: 'drafts', name: 'Drafts', icon: 'book', count: 0 },
+  { id: 'archive', name: 'Archive', icon: 'archive', count: 0 },
+  { id: 'trash', name: 'Trash', icon: 'trash-2', count: 0 },
+];
+
+// Mock contacts data
+export const contacts: Contact[] = [
+  {
+    id: 'c1',
+    name: 'Olivia Maple',
+    email: 'olivia@forestmail.com',
+    woodlandName: 'Wise Owl',
+    animal: 'owl',
+    avatar: '/avatar-owl.png'
+  },
+  {
+    id: 'c2',
+    name: 'Liam Oakley',
+    email: 'liam@forestmail.com',
+    woodlandName: 'Swift Fox',
+    animal: 'fox',
+    avatar: '/avatar-fox.png'
+  },
+  {
+    id: 'c3',
+    name: 'Emma Pinecone',
+    email: 'emma@forestmail.com',
+    woodlandName: 'Nimble Rabbit',
+    animal: 'rabbit',
+    avatar: '/avatar-rabbit.png'
+  },
+  {
+    id: 'c4',
+    name: 'Noah Birch',
+    email: 'noah@forestmail.com',
+    woodlandName: 'Clever Squirrel',
+    animal: 'squirrel',
+    avatar: '/avatar-squirrel.png'
+  }
+];
+
+// Animal guides data
+export const animalGuides = {
+  'new-email': {
+    animal: 'fox',
+    message: 'To send a new message, click the butterfly in the corner! 🦊'
+  },
+  'folders': {
+    animal: 'owl',
+    message: 'Your emails are organized in folders on the left side. Click to explore! 🦉'
+  },
+  'search': {
+    animal: 'rabbit',
+    message: 'Looking for something? Use the search bar at the top! 🐰'
+  }
+};
+
+// Gmail service implementation - keep all the existing code from the original file
 // This is a Gmail service implementation using the Google API
-import { Email, Contact } from '@/data/mockData';
 
 interface GmailEmail {
   id: string;
@@ -57,8 +121,8 @@ const getAccessToken = (): string | null => {
 }
 
 // Fetch emails from Gmail API
-export const fetchEmails = async (token: string): Promise<Email[]> => {
-  console.log('fetchEmails called with token type:', typeof token);
+export const fetchEmails = async (token: string, page: number = 1, pageSize: number = 10): Promise<Email[]> => {
+  console.log('fetchEmails called with token type:', typeof token, 'page:', page, 'pageSize:', pageSize);
   
   // Get the access token regardless of what was passed in
   const accessToken = getAccessToken();
@@ -91,8 +155,12 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
       throw new Error('Authentication failed - please login again');
     }
     
+    // Calculate pagination parameters
+    const maxResults = pageSize;
+    const startIndex = (page - 1) * pageSize;
+    
     // Get list of emails from Gmail API - we'll fetch both inbox and sent emails
-    const inboxResponse = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX', {
+    const inboxResponse = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}&labelIds=INBOX&pageToken=${startIndex > 0 ? `${startIndex}` : ''}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`
       }
@@ -127,7 +195,7 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
     console.log('Gmail API inbox response received:', inboxData);
     
     // Also fetch sent emails
-    const sentResponse = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=SENT', {
+    const sentResponse = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}&labelIds=SENT&pageToken=${startIndex > 0 ? `${startIndex}` : ''}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`
       }

@@ -1,5 +1,22 @@
 
-import { Email as BaseEmail, Contact } from '@/data/mockData';
+// Define our base types for the application
+export interface Contact {
+  id: string;
+  name: string;
+  email: string;
+  woodlandName?: string;
+  animal?: 'fox' | 'rabbit' | 'owl' | 'squirrel' | 'cat' | 'dog' | 'bird';
+  avatar?: string;
+}
+
+export interface BaseEmail {
+  id: string;
+  from: Contact;
+  subject: string;
+  body: string;
+  received: string;
+  read: boolean;
+}
 
 // Extend the Email interface to include labels
 export interface EmailWithLabels extends BaseEmail {
@@ -8,6 +25,3 @@ export interface EmailWithLabels extends BaseEmail {
 
 // For backward compatibility
 export type Email = EmailWithLabels;
-
-// Export the Contact type for use in other files
-export type { Contact };

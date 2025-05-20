@@ -1,432 +1,344 @@
-import { useState, useEffect } from 'react';
-import { cn } from '@/lib/utils';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { fetchEmails } from '@/data/mockData';
 import { Email } from '@/types/email';
-import { format } from 'date-fns';
-import { fetchEmails } from '@/services/gmailService';
 import { useUser } from '@/context/UserContext';
-import { toast } from '@/hooks/use-toast';
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { ReloadIcon } from "@radix-ui/react-icons";
-import { GmailSetupGuide } from './GmailSetupGuide';
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationEllipsis, 
-  PaginationItem, 
-  PaginationLink, 
-  PaginationNext, 
-  PaginationPrevious 
-} from './ui/pagination';
+import { RefreshCw } from 'lucide-react';
 
 interface EmailListProps {
-  folderId?: string;
+  folderId: string;
   searchQuery?: string;
+  page: number;
+  pageSize: number;
+  onPageChange: (newPage: number) => void;
 }
 
-export const EmailList = ({ folderId = 'inbox', searchQuery = '' }: EmailListProps) => {
-  const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
-  const [isEmailOpen, setIsEmailOpen] = useState(false);
+export const EmailList: React.FC<EmailListProps> = ({
+  folderId,
+  searchQuery = '',
+  page,
+  pageSize,
+  onPageChange,
+}) => {
   const [emails, setEmails] = useState<Email[]>([]);
-  const [filteredEmails, setFilteredEmails] = useState<Email[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { token, logout, tokenObject, getAccessToken } = useUser();
-  const [needsPermissions, setNeedsPermissions] = useState(false);
-  
-  // Pagination states
-  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [totalEmails, setTotalEmails] = useState(0);
-  const emailsPerPage = 10;
-  
-  const loadEmails = async (page = 1, force = false) => {
+  const [refreshKey, setRefreshKey] = useState(0); // Used to trigger refresh
+  const { token } = useUser();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Function to load emails
+  const loadEmails = async () => {
     if (!token) {
-      console.log('No auth token available, using mock data');
-      setEmails(require('@/data/mockData').emails);
+      setEmails([]);
+      setLoading(false);
       return;
     }
 
-    // If emails are already loaded and we're not forcing a reload, just paginate the existing emails
-    if (emails.length > 0 && !force && page === 1) {
-      console.log('Using already loaded emails');
-      return;
-    }
-
-    setIsLoading(true);
+    setLoading(true);
     setError(null);
-    setNeedsPermissions(false);
-    
+
     try {
-      console.log(`Loading emails from Gmail API for page ${page}`);
-      console.log('Token available:', token ? 'Yes' : 'No');
-      
-      // Pass pagination parameters to the fetchEmails function
-      const gmailEmails = await fetchEmails(token, (page - 1) * emailsPerPage, emailsPerPage);
-      
-      if (gmailEmails && gmailEmails.length > 0) {
-        console.log(`Loaded ${gmailEmails.length} emails from Gmail`);
-        
-        if (page === 1 || force) {
-          setEmails(gmailEmails);
-        } else {
-          // Append new emails to existing ones, avoiding duplicates
-          const existingIds = new Set(emails.map(email => email.id));
-          const uniqueNewEmails = gmailEmails.filter(email => !existingIds.has(email.id));
-          setEmails(prev => [...prev, ...uniqueNewEmails]);
+      console.log(`Fetching emails for folder: ${folderId}, page: ${page}, pageSize: ${pageSize}`);
+      const allEmails = await fetchEmails(token, page, pageSize);
+      console.log('Fetched emails:', allEmails);
+
+      // Filter emails based on folder and search query
+      const filteredEmails = allEmails.filter(email => {
+        // Filter by folder
+        if (folderId && folderId !== 'inbox') {
+          const hasMatchingLabel = email.labels?.includes(folderId.toLowerCase());
+          if (!hasMatchingLabel) return false;
         }
-        
-        // Set estimated total based on API response (could be implemented in the service)
-        setTotalEmails(Math.max(gmailEmails.length + (page - 1) * emailsPerPage, emails.length));
-        
-        toast({
-          title: "Emails loaded successfully",
-          description: `Retrieved emails for page ${page}.`,
-        });
-      } else if (page === 1) {
-        console.log('No Gmail emails found, using mock data');
-        const mockEmails = require('@/data/mockData').emails;
-        setEmails(mockEmails);
-        setTotalEmails(mockEmails.length);
-        toast({
-          title: "No emails found",
-          description: "We couldn't find any emails in your account. Showing sample data instead.",
-        });
-      }
-    } catch (error: any) {
-      console.error('Failed to fetch emails:', error);
-      
-      // Check for specific error types
-      if (error.message?.includes('Permission denied') || error.message?.includes('Gmail permissions')) {
-        setError(error.message);
-        setNeedsPermissions(true);
-        toast({
-          title: "Gmail permissions required",
-          description: "Please log out and log in again, making sure to approve all permission requests.",
-          variant: "destructive",
-        });
-      } else if (error.message?.includes('Authentication failed')) {
-        setError("Authentication failed. Please log in again.");
-        toast({
-          title: "Session expired",
-          description: "Your login session has expired. Please log in again.",
-          variant: "destructive",
-        });
-        
-        // Automatically log out after a delay
-        setTimeout(() => {
-          logout();
-        }, 3000);
-      } else {
-        setError(error.message || "Error connecting to emails");
-        toast({
-          title: "Couldn't load emails",
-          description: "There was a problem connecting to your email. Using sample data instead.",
-          variant: "destructive",
-        });
-      }
-      
-      // Fall back to mock data on error
-      const mockEmails = require('@/data/mockData').emails;
-      setEmails(mockEmails);
-      setTotalEmails(mockEmails.length);
+
+        // If search query exists, filter by that too
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase();
+          const searchableContent = [
+            email.subject.toLowerCase(),
+            email.from.name.toLowerCase(),
+            email.from.email.toLowerCase(),
+            email.body.toLowerCase()
+          ].join(' ');
+
+          return searchableContent.includes(query);
+        }
+
+        return true;
+      });
+
+      setEmails(filteredEmails);
+      setTotalEmails(filteredEmails.length + (page - 1) * pageSize); // Rough estimate
+      console.log('Filtered emails for display:', filteredEmails);
+    } catch (err) {
+      console.error('Error loading emails:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load emails');
+      toast({
+        title: "Failed to load emails",
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
-  
-  // Load emails when the token or page changes
+
+  // Load emails on component mount and when dependencies change
   useEffect(() => {
-    loadEmails(currentPage);
-  }, [token, currentPage]);
-  
-  // Filter emails whenever folder, search query, or emails change
-  useEffect(() => {
-    console.log(`Filtering emails for folder: ${folderId}, search: "${searchQuery}"`);
+    console.log('EmailList dependencies changed, reloading emails');
+    loadEmails();
+  }, [token, folderId, searchQuery, page, pageSize, refreshKey]);
+
+  // Handle refresh action
+  const handleRefresh = () => {
+    setRefreshKey(prevKey => prevKey + 1);
+  };
+
+  // Handle opening an email
+  const handleOpenEmail = (email: Email) => {
+    setSelectedEmail(email);
     
-    let filtered = emails;
-    
-    // Apply folder filter
-    if (folderId && folderId !== 'inbox') {
-      filtered = filtered.filter(email => email.labels?.includes(folderId));
-    }
-    
-    // Apply search query filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(email => 
-        email.subject.toLowerCase().includes(query) || 
-        email.body.toLowerCase().includes(query) ||
-        email.from.name.toLowerCase().includes(query) ||
-        email.from.email.toLowerCase().includes(query)
+    // Mark as read if not already
+    if (!email.read) {
+      // In a real app, we would update the server here
+      const updatedEmails = emails.map(e => 
+        e.id === email.id ? { ...e, read: true } : e
       );
+      setEmails(updatedEmails);
+    }
+  };
+
+  // Handle closing the email detail view
+  const handleCloseEmail = () => {
+    setSelectedEmail(null);
+  };
+
+  // Handle pagination
+  const handleNextPage = () => {
+    onPageChange(page + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (page > 1) {
+      onPageChange(page - 1);
+    }
+  };
+
+  // Format date to human readable format
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    
+    // If it's today, show time
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
     
-    setFilteredEmails(filtered);
-    
-  }, [emails, folderId, searchQuery]);
-  
-  const selectedEmail = filteredEmails.find(email => email.id === selectedEmailId);
-  
-  const handleEmailClick = (emailId: string) => {
-    setSelectedEmailId(emailId);
-    setIsEmailOpen(true);
-  };
-  
-  const handleBack = () => {
-    setIsEmailOpen(false);
-  };
-  
-  const handleRetry = () => {
-    loadEmails(1, true);
-  };
-  
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-  
-  // Calculate total pages
-  const totalPages = Math.ceil(totalEmails / emailsPerPage);
-  
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxPagesToShow = 5;
-    
-    if (totalPages <= maxPagesToShow) {
-      // If we have 5 or fewer pages, show all of them
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      // Always show first page
-      pages.push(1);
-      
-      // Calculate middle pages to show
-      if (currentPage <= 3) {
-        // Near the beginning
-        pages.push(2, 3);
-        pages.push(0); // Placeholder for ellipsis
-      } else if (currentPage >= totalPages - 2) {
-        // Near the end
-        pages.push(0); // Placeholder for ellipsis
-        pages.push(totalPages - 2, totalPages - 1);
-      } else {
-        // Somewhere in the middle
-        pages.push(0); // Placeholder for ellipsis
-        pages.push(currentPage - 1, currentPage, currentPage + 1);
-        pages.push(0); // Placeholder for ellipsis
-      }
-      
-      // Always show last page
-      pages.push(totalPages);
+    // If it's this year, show month and day
+    if (date.getFullYear() === now.getFullYear()) {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
     
-    return pages;
+    // Otherwise show full date
+    return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
   };
-  
-  return (
-    <div className="w-full">
-      {!isEmailOpen ? (
-        <div className="space-y-4">
-          {needsPermissions && <GmailSetupGuide />}
+
+  if (!token) {
+    return (
+      <div className="p-6 forest-card text-center">
+        <p>Please log in to view your emails.</p>
+        <button 
+          onClick={() => navigate('/login')}
+          className="mt-4 forest-button"
+        >
+          Go to Login
+        </button>
+      </div>
+    );
+  }
+
+  if (loading && !emails.length) {
+    return (
+      <div className="p-6 forest-card">
+        <div className="flex justify-center items-center">
+          <RefreshCw className="animate-spin h-6 w-6 mr-2 text-forest-bark" />
+          <p>Loading messages from the forest...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !emails.length) {
+    return (
+      <div className="p-6 forest-card bg-red-50 border border-red-300">
+        <h3 className="text-lg font-bold text-red-800">Error loading messages</h3>
+        <p className="text-red-700">{error}</p>
+        <button 
+          onClick={handleRefresh}
+          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (!emails.length) {
+    return (
+      <div className="p-6 forest-card text-center">
+        <img src="/empty-folder.png" alt="Empty folder" className="mx-auto h-32 mb-4 opacity-60" />
+        <h3 className="text-xl font-bold mb-2">This branch is empty</h3>
+        <p className="text-forest-bark/70 mb-4">
+          No messages have landed here yet. They might be resting in another branch.
+        </p>
+        <button 
+          onClick={handleRefresh}
+          className="forest-button inline-flex items-center gap-2"
+        >
+          <RefreshCw className="h-4 w-4" /> Refresh
+        </button>
+      </div>
+    );
+  }
+
+  // Email detail view
+  if (selectedEmail) {
+    return (
+      <div className="forest-card overflow-hidden">
+        <div className="flex justify-between items-center p-4 border-b border-forest-border">
+          <button onClick={handleCloseEmail} className="font-medium text-forest-accent hover:underline">
+            ← Back to {folderId === 'sent' ? 'Sent Butterflies' : 'Inbox'}
+          </button>
+          <div className="text-sm text-forest-bark/70">
+            {formatDate(selectedEmail.received)}
+          </div>
+        </div>
         
-          <div className="forest-card">
-            <h2 className="text-xl font-semibold text-forest-bark mb-1">
-              {folderId === 'inbox' 
-                ? 'Leaf Pile' 
-                : folderId.charAt(0).toUpperCase() + folderId.slice(1) + ' Messages'
-              }
-            </h2>
-            <p className="text-sm text-forest-bark/70 mb-4">
-              {searchQuery 
-                ? `Searched for "${searchQuery}" - ${filteredEmails.length} results` 
-                : `Page ${currentPage} of your forest messages`
-              }
-            </p>
-            
-            {error && !needsPermissions && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertTitle>Connection Error</AlertTitle>
-                <AlertDescription className="flex justify-between items-center">
-                  <span>{error}</span>
-                  <div className="flex gap-2">
-                    {error.includes('Authentication failed') && (
-                      <button 
-                        onClick={logout} 
-                        className="bg-destructive/10 hover:bg-destructive/20 px-3 py-1 rounded flex items-center gap-2"
-                      >
-                        Log out
-                      </button>
-                    )}
-                    <button 
-                      onClick={handleRetry} 
-                      className="bg-destructive/10 hover:bg-destructive/20 px-3 py-1 rounded flex items-center gap-2"
-                    >
-                      <ReloadIcon className="h-4 w-4" /> Retry
-                    </button>
+        <div className="p-6">
+          <h2 className="text-2xl font-bold mb-4">{selectedEmail.subject}</h2>
+          
+          <div className="flex items-center mb-6">
+            <div className="relative">
+              <img 
+                src={selectedEmail.from.avatar || '/avatar-fox.png'} 
+                alt={selectedEmail.from.name} 
+                className="w-12 h-12 rounded-full border-2 border-forest-accent"
+              />
+              <div className="absolute bottom-0 right-0 w-4 h-4 bg-white rounded-full flex items-center justify-center">
+                <span className="text-xs">
+                  {selectedEmail.from.animal === 'fox' ? '🦊' :
+                   selectedEmail.from.animal === 'owl' ? '🦉' :
+                   selectedEmail.from.animal === 'rabbit' ? '🐰' :
+                   selectedEmail.from.animal === 'squirrel' ? '🐿️' :
+                   selectedEmail.from.animal === 'cat' ? '🐱' :
+                   selectedEmail.from.animal === 'dog' ? '🐶' :
+                   selectedEmail.from.animal === 'bird' ? '🐦' : '🦊'}
+                </span>
+              </div>
+            </div>
+            <div className="ml-4">
+              <div className="font-medium">{selectedEmail.from.name}</div>
+              <div className="text-sm text-forest-bark/70">{selectedEmail.from.email}</div>
+              <div className="text-xs text-forest-bark/50">
+                {selectedEmail.from.woodlandName || 'Forest Dweller'}
+              </div>
+            </div>
+          </div>
+          
+          <div className="prose max-w-none">
+            <p>{selectedEmail.body}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Email list view
+  return (
+    <div>
+      <div className="mb-2 flex justify-between items-center">
+        <div className="text-sm text-forest-bark/70">
+          {emails.length} message{emails.length !== 1 ? 's' : ''} {searchQuery && `matching "${searchQuery}"`}
+        </div>
+        <button 
+          onClick={handleRefresh} 
+          className="p-2 text-forest-accent hover:text-forest-bark flex items-center gap-1 rounded-lg hover:bg-forest-bg transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
+          <span className="text-sm">Refresh</span>
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {emails.map(email => (
+          <div 
+            key={email.id}
+            onClick={() => handleOpenEmail(email)}
+            className={`forest-card p-4 cursor-pointer transition-all ${
+              !email.read ? 'bg-forest-bg border-l-4 border-l-forest-accent' : ''
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="relative mr-3">
+                  <img 
+                    src={email.from.avatar || '/avatar-fox.png'} 
+                    alt={email.from.name} 
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                    <span className="text-[8px]">
+                      {email.from.animal === 'fox' ? '🦊' :
+                       email.from.animal === 'owl' ? '🦉' :
+                       email.from.animal === 'rabbit' ? '🐰' :
+                       email.from.animal === 'squirrel' ? '🐿️' :
+                       email.from.animal === 'cat' ? '🐱' :
+                       email.from.animal === 'dog' ? '🐶' :
+                       email.from.animal === 'bird' ? '🐦' : '🦊'}
+                    </span>
                   </div>
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {isLoading && (
-              <div className="flex justify-center p-4">
-                <div className="w-8 h-8 border-4 border-t-forest-leaf border-forest-moss/30 rounded-full animate-spin"></div>
+                </div>
+                <div>
+                  <div className={`font-medium ${!email.read ? 'font-bold' : ''}`}>{email.from.name}</div>
+                  <div className="text-xs text-forest-bark/70">{email.from.email}</div>
+                </div>
               </div>
-            )}
-            
-            <div className="space-y-2">
-              {filteredEmails.map((email) => (
-                <EmailCard 
-                  key={email.id} 
-                  email={email} 
-                  onClick={() => handleEmailClick(email.id)}
-                />
-              ))}
-            </div>
-            
-            {filteredEmails.length === 0 && !isLoading && (
-              <div className="text-center py-8 text-forest-bark/70">
-                No messages found in this part of the forest
+              <div className="text-xs text-forest-bark/70">
+                {formatDate(email.received)}
               </div>
-            )}
-            
-            {!isLoading && totalPages > 1 && (
-              <div className="mt-6 pt-3 border-t border-forest-moss/30">
-                <Pagination>
-                  <PaginationContent>
-                    {currentPage > 1 && (
-                      <PaginationItem>
-                        <PaginationPrevious 
-                          onClick={() => handlePageChange(currentPage - 1)} 
-                          className="cursor-pointer"
-                        />
-                      </PaginationItem>
-                    )}
-                    
-                    {getPageNumbers().map((page, index) => 
-                      page === 0 ? (
-                        <PaginationItem key={`ellipsis-${index}`}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      ) : (
-                        <PaginationItem key={page}>
-                          <PaginationLink
-                            isActive={page === currentPage}
-                            onClick={() => handlePageChange(page)}
-                            className="cursor-pointer"
-                          >
-                            {page}
-                          </PaginationLink>
-                        </PaginationItem>
-                      )
-                    )}
-                    
-                    {currentPage < totalPages && (
-                      <PaginationItem>
-                        <PaginationNext 
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          className="cursor-pointer" 
-                        />
-                      </PaginationItem>
-                    )}
-                  </PaginationContent>
-                </Pagination>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <EmailDetail email={selectedEmail} onBack={handleBack} />
-      )}
-    </div>
-  );
-};
-
-const EmailCard = ({ email, onClick }: { email: Email, onClick: () => void }) => {
-  const date = new Date(email.received);
-  const formattedDate = format(date, 'MMM d');
-  
-  return (
-    <div 
-      onClick={onClick}
-      className={cn(
-        "p-3 rounded-xl cursor-pointer transition-all hover:shadow-md animate-float",
-        email.read ? "bg-white/60" : "bg-forest-moss/30 font-medium",
-      )}
-      style={{
-        animationDelay: `${Math.random() * 2}s`
-      }}
-    >
-      <div className="flex justify-between items-start">
-        <div className="flex items-center">
-          <div className="w-8 h-8 rounded-full bg-forest-moss flex items-center justify-center text-forest-leaf mr-3">
-            {email.from.name.charAt(0)}
-          </div>
-          <div>
-            <div className="text-sm font-semibold text-forest-bark group relative">
-              <span className="absolute transition-opacity duration-200 opacity-100 group-hover:opacity-0">
-                {email.from.woodlandName}
-              </span>
-              <span className="absolute transition-opacity duration-200 opacity-0 group-hover:opacity-100">
-                {email.from.name}
-              </span>
             </div>
-            <div className="text-xs text-forest-bark/70 mt-5">{email.subject}</div>
-          </div>
-        </div>
-        <div className="text-xs text-forest-bark/70">{formattedDate}</div>
-      </div>
-    </div>
-  );
-};
-
-const EmailDetail = ({ email, onBack }: { email: Email | undefined, onBack: () => void }) => {
-  if (!email) return null;
-  
-  const date = new Date(email.received);
-  const formattedDate = format(date, 'MMM d, yyyy h:mm a');
-  
-  return (
-    <div className="forest-card animate-pop">
-      <button 
-        onClick={onBack}
-        className="mb-4 text-forest-berry hover:text-forest-berry/80 font-medium flex items-center"
-      >
-        ← Back to Leaf Pile
-      </button>
-      
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-forest-bark mb-1">{email.subject}</h1>
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <div className="w-10 h-10 rounded-full bg-forest-moss flex items-center justify-center text-forest-leaf mr-3">
-              {email.from.name.charAt(0)}
+            <div className={`mt-2 ${!email.read ? 'font-semibold' : ''}`}>
+              {email.subject}
             </div>
-            <div>
-              <div className="font-medium">{email.from.name}</div>
-              <div className="text-xs text-forest-bark/60">as {email.from.woodlandName}</div>
-              <div className="text-xs text-forest-bark/70">{email.from.email}</div>
+            <div className="mt-1 text-sm text-forest-bark/70 line-clamp-2">
+              {email.body.length > 120 ? `${email.body.substring(0, 120)}...` : email.body}
             </div>
           </div>
-          <div className="text-sm text-forest-bark/70">{formattedDate}</div>
-        </div>
+        ))}
       </div>
       
-      <div className="border-t border-forest-moss/30 pt-4 text-forest-bark">
-        <p>{email.body}</p>
-      </div>
-      
-      <div className="mt-6 pt-4 border-t border-forest-moss/30 flex justify-between">
-        <div>
-          <button className="forest-btn-primary mr-2">
-            Reply
-          </button>
-          <button className="forest-btn-secondary">
-            Forward
-          </button>
+      {/* Pagination controls */}
+      <div className="mt-6 flex justify-between">
+        <button 
+          onClick={handlePrevPage}
+          disabled={page === 1}
+          className={`forest-button ${page === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          Previous
+        </button>
+        <div className="text-forest-bark">
+          Page {page}
         </div>
-        <button className="forest-btn-neutral flex items-center">
-          <span>Feed to Beaver</span>
+        <button 
+          onClick={handleNextPage}
+          disabled={emails.length < pageSize}
+          className={`forest-button ${emails.length < pageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          Next
         </button>
       </div>
     </div>
