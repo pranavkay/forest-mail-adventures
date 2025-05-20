@@ -1,10 +1,19 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { fetchEmails } from '@/data/mockData';
 import { Email } from '@/types/email';
 import { useUser } from '@/context/UserContext';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious 
+} from "@/components/ui/pagination";
 
 interface EmailListProps {
   folderId: string;
@@ -115,17 +124,6 @@ export const EmailList: React.FC<EmailListProps> = ({
   // Handle closing the email detail view
   const handleCloseEmail = () => {
     setSelectedEmail(null);
-  };
-
-  // Handle pagination
-  const handleNextPage = () => {
-    onPageChange(page + 1);
-  };
-
-  const handlePrevPage = () => {
-    if (page > 1) {
-      onPageChange(page - 1);
-    }
   };
 
   // Format date to human readable format
@@ -321,26 +319,55 @@ export const EmailList: React.FC<EmailListProps> = ({
         ))}
       </div>
       
-      {/* Pagination controls */}
-      <div className="mt-6 flex justify-between">
-        <button 
-          onClick={handlePrevPage}
-          disabled={page === 1}
-          className={`forest-button ${page === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          Previous
-        </button>
-        <div className="text-forest-bark">
-          Page {page}
-        </div>
-        <button 
-          onClick={handleNextPage}
-          disabled={emails.length < pageSize}
-          className={`forest-button ${emails.length < pageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          Next
-        </button>
-      </div>
+      {/* Pagination using shadcn/ui component */}
+      <Pagination className="mt-6">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious 
+              onClick={() => page > 1 && onPageChange(page - 1)}
+              className={`forest-button-outline ${page === 1 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            />
+          </PaginationItem>
+          
+          {page > 1 && (
+            <PaginationItem>
+              <PaginationLink 
+                onClick={() => onPageChange(page - 1)} 
+                className="cursor-pointer bg-forest-bg text-forest-bark hover:bg-forest-accent/20"
+              >
+                {page - 1}
+              </PaginationLink>
+            </PaginationItem>
+          )}
+          
+          <PaginationItem>
+            <PaginationLink 
+              isActive 
+              className="bg-forest-accent text-white hover:bg-forest-accent/80"
+            >
+              {page}
+            </PaginationLink>
+          </PaginationItem>
+          
+          {emails.length === pageSize && (
+            <PaginationItem>
+              <PaginationLink 
+                onClick={() => onPageChange(page + 1)}
+                className="cursor-pointer bg-forest-bg text-forest-bark hover:bg-forest-accent/20"
+              >
+                {page + 1}
+              </PaginationLink>
+            </PaginationItem>
+          )}
+          
+          <PaginationItem>
+            <PaginationNext 
+              onClick={() => emails.length === pageSize && onPageChange(page + 1)}
+              className={`forest-button-outline ${emails.length < pageSize ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
     </div>
   );
 };

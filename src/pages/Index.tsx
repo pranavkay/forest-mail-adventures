@@ -1,12 +1,13 @@
 
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
 import { EmailList } from '@/components/EmailList';
 import { ComposeEmail } from '@/components/ComposeEmail';
 import { AnimalGuide } from '@/components/AnimalGuide';
 import { GmailSetupGuide } from '@/components/GmailSetupGuide';
 import { useUser } from '@/context/UserContext';
+import { toast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [activeGuide, setActiveGuide] = useState('new-email');
@@ -14,9 +15,22 @@ const Index = () => {
   const [showSetupGuide, setShowSetupGuide] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const location = useLocation();
-  const currentFolder = new URLSearchParams(location.search).get('folder') || 'inbox';
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const navigate = useNavigate();
+  const searchParams = new URLSearchParams(location.search);
+  const currentFolder = searchParams.get('folder') || 'inbox';
+  const pageParam = searchParams.get('page');
+  const [page, setPage] = useState(pageParam ? parseInt(pageParam, 10) : 1);
+  const [pageSize] = useState(10);
+  
+  useEffect(() => {
+    // Update page from URL when it changes
+    const pageFromUrl = searchParams.get('page');
+    if (pageFromUrl) {
+      setPage(parseInt(pageFromUrl, 10));
+    } else {
+      setPage(1); // Reset to page 1 when not specified
+    }
+  }, [location.search]);
   
   useEffect(() => {
     const guideOrder = ['new-email', 'folders', 'search'];
@@ -45,11 +59,25 @@ const Index = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Searching for:', searchQuery);
-    // We'll implement actual search functionality later
+    // Reset to page 1 when searching
+    handlePageChange(1);
+    
+    // Show a toast notification
+    if (searchQuery) {
+      toast({
+        title: `Searching for "${searchQuery}"`,
+        description: "Looking through the forest for your messages",
+      });
+    }
   };
 
   const handlePageChange = (newPage: number) => {
-    setPage(newPage);
+    // Update URL with new page parameter
+    const params = new URLSearchParams(location.search);
+    params.set('page', newPage.toString());
+    navigate(`?${params.toString()}`);
+    
+    // We don't need to call setPage here as the useEffect will handle that
   };
   
   return (
