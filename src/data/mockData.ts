@@ -1,165 +1,362 @@
+// This is a Gmail service implementation using the Google API
+import { Email, Contact } from '@/data/mockData';
 
-export interface Contact {
+interface GmailEmail {
   id: string;
-  name: string;
-  woodlandName: string;
-  email: string;
-  avatar: string;
-  animal: 'fox' | 'rabbit' | 'owl' | 'squirrel' | 'cat' | 'dog' | 'bird';
+  snippet: string;
+  payload: {
+    headers: {
+      name: string;
+      value: string;
+    }[];
+    parts?: {
+      mimeType: string;
+      body: {
+        data: string;
+      };
+    }[];
+    body?: {
+      data: string;
+    };
+  };
+  labelIds: string[];
+  internalDate: string;
 }
 
-export interface Email {
-  id: string;
-  from: Contact;
-  subject: string;
-  body: string;
-  received: string;
-  read: boolean;
+// Helper function to get the access token (simplified version)
+const getAccessToken = (): string | null => {
+  // Try to get the direct access token first (most reliable)
+  const directAccessToken = localStorage.getItem('gmail_access_token');
+  if (directAccessToken) {
+    console.log('Using direct access token from localStorage');
+    return directAccessToken;
+  }
+  
+  // Fall back to the composite token
+  const token = localStorage.getItem('gmail_token');
+  if (!token) {
+    console.log('No token found in localStorage');
+    return null;
+  }
+  
+  try {
+    // Try parsing as JSON first (for our composite token)
+    const parsedToken = JSON.parse(token);
+    if (parsedToken && parsedToken.access_token) {
+      console.log('Access token extracted from composite token');
+      return parsedToken.access_token;
+    }
+  } catch (e) {
+    // If parsing fails, the token might already be a raw access token
+    console.log('Token is not in JSON format, using as raw access token');
+    return token;
+  }
+  
+  console.log('Could not extract access token from available tokens');
+  return null;
 }
 
-export interface Folder {
-  id: string;
-  name: string;
-  count: number;
-  icon?: string;
-}
-
-export const contacts: Contact[] = [
-  {
-    id: '1',
-    name: 'Felix Thompson',
-    woodlandName: 'Fiona Fox',
-    email: 'felix@forest-mail.com',
-    avatar: '/avatar-fox.png',
-    animal: 'fox'
-  },
-  {
-    id: '2',
-    name: 'Rachel Bennett',
-    woodlandName: 'Ruby Rabbit',
-    email: 'rachel@forest-mail.com',
-    avatar: '/avatar-rabbit.png',
-    animal: 'rabbit'
-  },
-  {
-    id: '3',
-    name: 'Oliver Chen',
-    woodlandName: 'Oliver Owl',
-    email: 'oliver@forest-mail.com',
-    avatar: '/avatar-owl.png',
-    animal: 'owl'
-  },
-  {
-    id: '4',
-    name: 'Sarah Parker',
-    woodlandName: 'Sam Squirrel',
-    email: 'sarah@forest-mail.com',
-    avatar: '/avatar-squirrel.png',
-    animal: 'squirrel'
-  },
-  {
-    id: '5',
-    name: 'Clara Johnson',
-    woodlandName: 'Clara Cat',
-    email: 'clara@forest-mail.com',
-    avatar: '/avatar-cat.png',
-    animal: 'cat'
+// Fetch emails from Gmail API
+export const fetchEmails = async (token: string): Promise<Email[]> => {
+  console.log('fetchEmails called with token type:', typeof token);
+  
+  // Get the access token regardless of what was passed in
+  const accessToken = getAccessToken();
+  
+  if (!accessToken) {
+    console.error('No access token available for Gmail API');
+    return [];
   }
-];
 
-export const emails: Email[] = [
-  {
-    id: '1',
-    from: contacts[0],
-    subject: 'Forest picnic tomorrow?',
-    body: 'Hello friend! I was wondering if you would like to join our forest picnic tomorrow at noon? Bring your favorite treats!',
-    received: '2023-04-24T10:30:00',
-    read: false
-  },
-  {
-    id: '2',
-    from: contacts[1],
-    subject: 'Carrot garden update',
-    body: 'The carrots are growing wonderfully! I think we\'ll have a bountiful harvest this season. Would you like some?',
-    received: '2023-04-23T15:45:00',
-    read: true
-  },
-  {
-    id: '3',
-    from: contacts[2],
-    subject: 'Nighttime forest tour',
-    body: 'I\'m organizing a nighttime tour of the forest this weekend. It\'s a perfect opportunity to see the stars and nocturnal creatures!',
-    received: '2023-04-22T21:15:00',
-    read: true
-  },
-  {
-    id: '4',
-    from: contacts[3],
-    subject: 'Acorn collection tips',
-    body: 'I\'ve written a small guide on the best ways to collect and store acorns for the winter. Let me know if you\'d like a copy!',
-    received: '2023-04-21T09:10:00',
-    read: false
-  },
-  {
-    id: '5',
-    from: contacts[4],
-    subject: 'Sunny spot by the river',
-    body: 'I found the most perfect sunny spot by the river for napping. We should meet there sometime!',
-    received: '2023-04-20T14:25:00',
-    read: true
-  }
-];
+  try {
+    console.log('Using access token for Gmail API:', accessToken.substring(0, 10) + '...');
+    
+    // Verify the token is active with a userinfo check
+    try {
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      
+      if (!userInfoResponse.ok) {
+        console.error('User info check failed:', userInfoResponse.status, userInfoResponse.statusText);
+        throw new Error(`Token validation failed: ${userInfoResponse.status} ${userInfoResponse.statusText}`);
+      }
+      
+      const userInfo = await userInfoResponse.json();
+      console.log('User info check succeeded:', userInfo.email);
+    } catch (error) {
+      console.error('Error validating token:', error);
+      throw new Error('Authentication failed - please login again');
+    }
+    
+    // Get list of emails from Gmail API - we'll fetch both inbox and sent emails
+    const inboxResponse = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
 
-export const folders: Folder[] = [
-  {
-    id: 'inbox',
-    name: 'Leaf Pile',
-    count: 3,
-    icon: 'leaf'
-  },
-  {
-    id: 'sent',
-    name: 'Sent Butterflies',
-    count: 0,
-    icon: 'bird'
-  },
-  {
-    id: 'drafts',
-    name: 'Mushroom Pocket',
-    count: 2,
-    icon: 'book'
-  },
-  {
-    id: 'archive',
-    name: 'Acorn Collection',
-    count: 8,
-    icon: 'archive'
-  },
-  {
-    id: 'trash',
-    name: 'Beaver\'s Recycling',
-    count: 0,
-    icon: 'trash-2'
-  }
-];
+    if (!inboxResponse.ok) {
+      // Try to get error details
+      let errorMessage = `HTTP Error: ${inboxResponse.status} ${inboxResponse.statusText}`;
+      try {
+        const errorDetails = await inboxResponse.json();
+        console.error('Gmail API error details:', errorDetails);
+        if (errorDetails.error && errorDetails.error.message) {
+          errorMessage = errorDetails.error.message;
+        }
+      } catch (e) {
+        console.error('Could not parse error response:', e);
+      }
+      
+      // Check if we have an auth error
+      if (inboxResponse.status === 401) {
+        console.error('Authentication error - token may be invalid or expired');
+        throw new Error('Authentication failed - please login again');
+      } else if (inboxResponse.status === 403) {
+        console.error('Permission error - insufficient permissions to access Gmail');
+        throw new Error('Permission denied - email scope may not be enabled');
+      }
+      
+      throw new Error(`Failed to fetch emails: ${errorMessage}`);
+    }
 
-export const animalGuides = [
-  {
-    id: 'new-email',
-    name: 'Hedgehog Helper',
-    tip: 'To create a new message, click the butterfly at the bottom right!',
-    shown: false
-  },
-  {
-    id: 'folders',
-    name: 'Wise Owl',
-    tip: 'Your emails are organized in branch folders on the left side. Click a branch to see what\'s inside!',
-    shown: false
-  },
-  {
-    id: 'search',
-    name: 'Detective Fox',
-    tip: 'Looking for a specific message? Use the search bar to hunt it down!',
-    shown: false
+    const inboxData = await inboxResponse.json();
+    console.log('Gmail API inbox response received:', inboxData);
+    
+    // Also fetch sent emails
+    const sentResponse = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=SENT', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+    
+    const sentData = sentResponse.ok ? await sentResponse.json() : { messages: [] };
+    console.log('Gmail API sent response received:', sentData);
+    
+    // Combine inbox and sent messages, ensuring no duplicates
+    const allMessages = [];
+    
+    if (inboxData.messages && Array.isArray(inboxData.messages)) {
+      allMessages.push(...inboxData.messages);
+    }
+    
+    if (sentData.messages && Array.isArray(sentData.messages)) {
+      // Add only sent messages that aren't already in the inbox list
+      const inboxIds = new Set(allMessages.map(msg => msg.id));
+      const uniqueSentMessages = sentData.messages.filter(msg => !inboxIds.has(msg.id));
+      allMessages.push(...uniqueSentMessages);
+    }
+    
+    if (allMessages.length === 0) {
+      console.log('No messages found in Gmail account');
+      return [];
+    }
+
+    // Fetch details for each email
+    const emailDetailsPromises = allMessages.map(async (message: { id: string }) => {
+      const detailResponse = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      
+      if (!detailResponse.ok) {
+        console.error(`Failed to fetch details for email ${message.id}`);
+        return null;
+      }
+      
+      return await detailResponse.json();
+    });
+
+    const emailDetails = await Promise.all(emailDetailsPromises);
+    const validEmails = emailDetails.filter(email => email !== null) as GmailEmail[];
+    
+    return transformGmailData(validEmails);
+  } catch (error) {
+    console.error('Error fetching emails:', error);
+    throw error; // Rethrow to allow the component to handle it
   }
-];
+};
+
+export const sendEmail = async (token: string, email: any): Promise<boolean> => {
+  // Get the access token regardless of what was passed in
+  const accessToken = getAccessToken();
+  
+  if (!accessToken) {
+    console.error('No access token available for Gmail API');
+    throw new Error('Authentication required to send emails');
+  }
+
+  try {
+    console.log('Using access token for sending email:', accessToken.substring(0, 10) + '...');
+
+    // Create the email in RFC 2822 format
+    const emailContent = [
+      `From: ${email.from}`,
+      `To: ${email.to}`,
+      `Subject: ${email.subject}`,
+      '',
+      email.body
+    ].join('\r\n');
+
+    // Encode the email to base64
+    const encodedEmail = btoa(emailContent)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    console.log('Sending email via Gmail API');
+    
+    // Send the email via Gmail API
+    const response = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        raw: encodedEmail
+      })
+    });
+
+    if (!response.ok) {
+      const errorDetails = await response.json();
+      console.error('Gmail API error:', errorDetails);
+      throw new Error(`Failed to send email: ${response.statusText}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
+  }
+};
+
+// Helper functions
+const transformGmailData = (gmailEmails: GmailEmail[]): Email[] => {
+  return gmailEmails.map(email => {
+    // Extract email details from headers
+    const headers = email.payload.headers || [];
+    const from = headers.find(h => h.name.toLowerCase() === 'from')?.value || 'Unknown';
+    const subject = headers.find(h => h.name.toLowerCase() === 'subject')?.value || '(No Subject)';
+    const date = headers.find(h => h.name.toLowerCase() === 'date')?.value || new Date().toISOString();
+    
+    // Extract email content
+    let body = '';
+    if (email.payload.parts && email.payload.parts.length > 0) {
+      // If email has parts (multipart email)
+      const textPart = email.payload.parts.find(part => part.mimeType === 'text/plain');
+      if (textPart && textPart.body.data) {
+        body = decodeBase64UrlSafe(textPart.body.data);
+      }
+    } else if (email.payload.body && email.payload.body.data) {
+      // Simple email format
+      body = decodeBase64UrlSafe(email.payload.body.data);
+    }
+
+    // Parse sender name and email
+    const fromMatch = from.match(/(.+) <(.+)>/);
+    const fromName = fromMatch ? fromMatch[1] : from;
+    const fromEmail = fromMatch ? fromMatch[2] : from;
+    
+    // Map Gmail labels to our folder system
+    const labels: string[] = [];
+    if (email.labelIds) {
+      if (email.labelIds.includes('SENT')) {
+        labels.push('sent');
+      }
+      if (email.labelIds.includes('DRAFT')) {
+        labels.push('drafts');
+      }
+      if (email.labelIds.includes('TRASH')) {
+        labels.push('trash');
+      }
+      if (email.labelIds.includes('INBOX')) {
+        labels.push('inbox');
+      }
+      // Add archive label for emails that have no INBOX, TRASH or SPAM label
+      if (!email.labelIds.includes('INBOX') && 
+          !email.labelIds.includes('TRASH') && 
+          !email.labelIds.includes('SPAM') && 
+          !email.labelIds.includes('SENT')) {
+        labels.push('archive');
+      }
+    }
+
+    return {
+      id: email.id,
+      from: {
+        id: `gmail-${email.id}`,
+        name: fromName,
+        email: fromEmail,
+        woodlandName: getRandomWoodlandName(),
+        animal: getRandomAnimal(),
+        avatar: `/avatar-fox.png`
+      },
+      subject,
+      body: body || email.snippet || '(No content)',
+      received: new Date(parseInt(email.internalDate)).toISOString(),
+      read: !email.labelIds.includes('UNREAD'),
+      labels: labels
+    };
+  });
+};
+
+// Helper function to decode base64 URL safe encoding
+const decodeBase64UrlSafe = (data: string): string => {
+  try {
+    const base64 = data.replace(/-/g, '+').replace(/_/g, '/');
+    return decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+  } catch (error) {
+    console.error('Error decoding email content:', error);
+    return '';
+  }
+};
+
+// Random woodland name generator (for fun!)
+const getRandomWoodlandName = (): string => {
+  const adjectives = ['Gentle', 'Wise', 'Swift', 'Clever', 'Nimble', 'Quiet', 'Brave'];
+  const animals = ['Deer', 'Fox', 'Rabbit', 'Owl', 'Squirrel', 'Wolf', 'Bear'];
+  
+  const randomAdj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const randomAnimal = animals[Math.floor(Math.random() * animals.length)];
+  
+  return `${randomAdj} ${randomAnimal}`;
+};
+
+// Random animal generator for avatar
+const getRandomAnimal = (): 'fox' | 'rabbit' | 'owl' | 'squirrel' | 'cat' | 'dog' | 'bird' => {
+  const animals = ['fox', 'rabbit', 'owl', 'squirrel', 'cat', 'dog', 'bird'];
+  return animals[Math.floor(Math.random() * animals.length)] as 'fox' | 'rabbit' | 'owl' | 'squirrel' | 'cat' | 'dog' | 'bird';
+};
+
+// Fallback to mock data if needed
+const mockTransformGmailData = (gmailEmails: GmailEmail[]): Email[] => {
+  console.log('Using mock Gmail data as fallback');
+  return [
+    {
+      id: 'g1',
+      from: {
+        id: 'gmail-user-1',
+        name: 'Gmail User',
+        email: 'gmail@gmail.com',
+        woodlandName: 'Gentle Deer',
+        animal: 'fox',
+        avatar: '/avatar-fox.png'
+      },
+      subject: 'Welcome to Gmail Forest Integration',
+      body: 'This is a sample email to demonstrate Gmail integration with Forest Mail.',
+      received: new Date().toISOString(),
+      read: false,
+      labels: ['inbox']
+    }
+  ];
+};

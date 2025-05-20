@@ -91,18 +91,18 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
       throw new Error('Authentication failed - please login again');
     }
     
-    // Get list of emails from Gmail API
-    const response = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX', {
+    // Get list of emails from Gmail API - we'll fetch both inbox and sent emails
+    const inboxResponse = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX', {
       headers: {
         Authorization: `Bearer ${accessToken}`
       }
     });
 
-    if (!response.ok) {
+    if (!inboxResponse.ok) {
       // Try to get error details
-      let errorMessage = `HTTP Error: ${response.status} ${response.statusText}`;
+      let errorMessage = `HTTP Error: ${inboxResponse.status} ${inboxResponse.statusText}`;
       try {
-        const errorDetails = await response.json();
+        const errorDetails = await inboxResponse.json();
         console.error('Gmail API error details:', errorDetails);
         if (errorDetails.error && errorDetails.error.message) {
           errorMessage = errorDetails.error.message;
@@ -112,10 +112,10 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
       }
       
       // Check if we have an auth error
-      if (response.status === 401) {
+      if (inboxResponse.status === 401) {
         console.error('Authentication error - token may be invalid or expired');
         throw new Error('Authentication failed - please login again');
-      } else if (response.status === 403) {
+      } else if (inboxResponse.status === 403) {
         console.error('Permission error - insufficient permissions to access Gmail');
         throw new Error('Permission denied - email scope may not be enabled');
       }
@@ -123,16 +123,40 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
       throw new Error(`Failed to fetch emails: ${errorMessage}`);
     }
 
-    const data = await response.json();
-    console.log('Gmail API response received:', data);
+    const inboxData = await inboxResponse.json();
+    console.log('Gmail API inbox response received:', inboxData);
     
-    if (!data.messages || !Array.isArray(data.messages)) {
+    // Also fetch sent emails
+    const sentResponse = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=SENT', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+    
+    const sentData = sentResponse.ok ? await sentResponse.json() : { messages: [] };
+    console.log('Gmail API sent response received:', sentData);
+    
+    // Combine inbox and sent messages, ensuring no duplicates
+    const allMessages = [];
+    
+    if (inboxData.messages && Array.isArray(inboxData.messages)) {
+      allMessages.push(...inboxData.messages);
+    }
+    
+    if (sentData.messages && Array.isArray(sentData.messages)) {
+      // Add only sent messages that aren't already in the inbox list
+      const inboxIds = new Set(allMessages.map(msg => msg.id));
+      const uniqueSentMessages = sentData.messages.filter(msg => !inboxIds.has(msg.id));
+      allMessages.push(...uniqueSentMessages);
+    }
+    
+    if (allMessages.length === 0) {
       console.log('No messages found in Gmail account');
       return [];
     }
 
     // Fetch details for each email
-    const emailDetailsPromises = data.messages.map(async (message: { id: string }) => {
+    const emailDetailsPromises = allMessages.map(async (message: { id: string }) => {
       const detailResponse = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`
@@ -237,6 +261,30 @@ const transformGmailData = (gmailEmails: GmailEmail[]): Email[] => {
     const fromMatch = from.match(/(.+) <(.+)>/);
     const fromName = fromMatch ? fromMatch[1] : from;
     const fromEmail = fromMatch ? fromMatch[2] : from;
+    
+    // Map Gmail labels to our folder system
+    const labels: string[] = [];
+    if (email.labelIds) {
+      if (email.labelIds.includes('SENT')) {
+        labels.push('sent');
+      }
+      if (email.labelIds.includes('DRAFT')) {
+        labels.push('drafts');
+      }
+      if (email.labelIds.includes('TRASH')) {
+        labels.push('trash');
+      }
+      if (email.labelIds.includes('INBOX')) {
+        labels.push('inbox');
+      }
+      // Add archive label for emails that have no INBOX, TRASH or SPAM label
+      if (!email.labelIds.includes('INBOX') && 
+          !email.labelIds.includes('TRASH') && 
+          !email.labelIds.includes('SPAM') && 
+          !email.labelIds.includes('SENT')) {
+        labels.push('archive');
+      }
+    }
 
     return {
       id: email.id,
@@ -251,7 +299,8 @@ const transformGmailData = (gmailEmails: GmailEmail[]): Email[] => {
       subject,
       body: body || email.snippet || '(No content)',
       received: new Date(parseInt(email.internalDate)).toISOString(),
-      read: !email.labelIds.includes('UNREAD')
+      read: !email.labelIds.includes('UNREAD'),
+      labels: labels
     };
   });
 };
@@ -306,7 +355,8 @@ const mockTransformGmailData = (gmailEmails: GmailEmail[]): Email[] => {
       subject: 'Welcome to Gmail Forest Integration',
       body: 'This is a sample email to demonstrate Gmail integration with Forest Mail.',
       received: new Date().toISOString(),
-      read: false
+      read: false,
+      labels: ['inbox']
     }
   ];
 };

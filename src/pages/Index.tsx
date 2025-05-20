@@ -56,6 +56,7 @@ const Index = () => {
             <div className="forest-card p-6 mb-4">
               <h1 className="text-2xl font-bold text-forest-bark mb-2">
                 {currentFolder === 'inbox' ? 'Welcome to your Forest Mail' : 
+                 currentFolder === 'sent' ? 'Sent Butterflies' :
                  `Browsing ${currentFolder.charAt(0).toUpperCase() + currentFolder.slice(1)} Messages`}
               </h1>
               <p className="text-forest-bark/70">Where your messages flutter and leaves gently fall</p>

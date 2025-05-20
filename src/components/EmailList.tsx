@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { emails as mockEmails, Email } from '@/data/mockData';
+import { emails as mockEmails } from '@/data/mockData';
+import { Email } from '@/types/email';
 import { format } from 'date-fns';
 import { fetchEmails } from '@/services/gmailService';
 import { useUser } from '@/context/UserContext';
