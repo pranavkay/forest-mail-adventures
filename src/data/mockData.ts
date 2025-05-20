@@ -46,19 +46,31 @@ export const contacts: Contact[] = [
   }
 ];
 
-// Animal guides data
-export const animalGuides = {
+// Export Contact type for re-use
+export type { Contact };
+
+// Animal guides data - define as an object with guide IDs as keys
+export interface AnimalGuide {
+  animal: string;
+  message: string;
+  shown?: boolean;
+}
+
+export const animalGuides: Record<string, AnimalGuide> = {
   'new-email': {
     animal: 'fox',
-    message: 'To send a new message, click the butterfly in the corner! 🦊'
+    message: 'To send a new message, click the butterfly in the corner! 🦊',
+    shown: false
   },
   'folders': {
     animal: 'owl',
-    message: 'Your emails are organized in folders on the left side. Click to explore! 🦉'
+    message: 'Your emails are organized in folders on the left side. Click to explore! 🦉',
+    shown: false
   },
   'search': {
     animal: 'rabbit',
-    message: 'Looking for something? Use the search bar at the top! 🐰'
+    message: 'Looking for something? Use the search bar at the top! 🐰',
+    shown: false
   }
 };
 
