@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { contacts } from '@/data/mockData';
-import { Mail, Phone, Search } from 'lucide-react';
+import { Mail, Phone, Search, Menu } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { ContactList } from '@/components/ContactList';
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Sidebar } from '@/components/Sidebar';
 const Contacts = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showSidebar, setShowSidebar] = useState(false);
   
   // Filter contacts based on search query
   const filteredContacts = contacts.filter(
@@ -34,15 +35,51 @@ const Contacts = () => {
     });
   };
 
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const sidebar = document.querySelector('.sidebar-container');
+      const toggleButton = document.querySelector('.sidebar-toggle');
+
+      if (
+        showSidebar &&
+        sidebar &&
+        !sidebar.contains(event.target as Node) &&
+        toggleButton &&
+        !toggleButton.contains(event.target as Node)
+      ) {
+        setShowSidebar(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSidebar]);
+
   return (
-    <div className="flex h-screen w-full">
-      <Sidebar />
+    <div className="flex flex-col md:flex-row h-screen w-full overflow-hidden">
+      {/* Mobile sidebar toggle */}
+      <div className="md:hidden fixed top-4 left-4 z-50 sidebar-toggle">
+        <button 
+          onClick={() => setShowSidebar(!showSidebar)}
+          className="p-2 bg-forest-leaf text-white rounded-full shadow-lg"
+        >
+          <Menu size={20} />
+        </button>
+      </div>
       
-      <div className="flex-1 overflow-auto p-6 leaf-bg">
+      {/* Sidebar - hidden on mobile by default, shown when toggled */}
+      <div className={`sidebar-container fixed md:relative z-40 transition-transform duration-300 ease-in-out h-screen ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <Sidebar />
+      </div>
+      
+      <div className="flex-1 overflow-auto p-4 md:p-6 leaf-bg pt-16 md:pt-6">
         <div className="max-w-4xl mx-auto">
           <Card className="mb-6 border-forest-moss/30 bg-gradient-to-br from-forest-cream/80 to-white shadow-md">
             <CardHeader className="pb-3">
-              <CardTitle className="text-2xl font-bold text-forest-bark">Woodland Friends</CardTitle>
+              <CardTitle className="text-xl md:text-2xl font-bold text-forest-bark">Woodland Friends</CardTitle>
               <CardDescription className="text-forest-bark/70">Your magical forest companions</CardDescription>
             </CardHeader>
             <CardContent>
@@ -91,7 +128,7 @@ const Contacts = () => {
           
           {/* Grid view for contacts */}
           {viewMode === 'grid' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredContacts.map((contact) => (
                 <Card 
                   key={contact.id} 
@@ -99,28 +136,28 @@ const Contacts = () => {
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 rounded-full bg-forest-moss flex items-center justify-center text-white shadow-inner animate-float">
-                        <div className="text-xl font-bold">{contact.name.charAt(0)}</div>
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-forest-moss flex items-center justify-center text-white shadow-inner animate-float">
+                        <div className="text-lg md:text-xl font-bold">{contact.name.charAt(0)}</div>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium text-forest-bark">{contact.name}</h3>
-                        <p className="text-sm text-forest-bark/70 italic">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-forest-bark truncate">{contact.name}</h3>
+                        <p className="text-xs md:text-sm text-forest-bark/70 italic truncate">
                           {getWoodlandName(contact.animal)}
                         </p>
-                        <p className="text-sm text-forest-bark/70">{contact.email}</p>
-                        <div className="mt-3 flex space-x-3">
+                        <p className="text-xs md:text-sm text-forest-bark/70 truncate">{contact.email}</p>
+                        <div className="mt-2 md:mt-3 flex flex-wrap gap-2 md:gap-3">
                           <button 
-                            className="text-sm text-forest-berry hover:text-forest-berry/80 flex items-center"
+                            className="text-xs md:text-sm text-forest-berry hover:text-forest-berry/80 flex items-center"
                             onClick={() => handleSendLetter(contact.email)}
                           >
-                            <Mail className="w-4 h-4 mr-1" />
+                            <Mail className="w-3 h-3 md:w-4 md:h-4 mr-1" />
                             Send letter
                           </button>
                           <button 
-                            className="text-sm text-forest-leaf hover:text-forest-leaf/80 flex items-center"
+                            className="text-xs md:text-sm text-forest-leaf hover:text-forest-leaf/80 flex items-center"
                             onClick={() => handleContactCall(contact)}
                           >
-                            <Phone className="w-4 h-4 mr-1" />
+                            <Phone className="w-3 h-3 md:w-4 md:h-4 mr-1" />
                             Forest call
                           </button>
                         </div>

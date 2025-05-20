@@ -131,44 +131,44 @@ const Login = () => {
   });
 
   return (
-    <div className="h-screen w-full flex flex-col items-center justify-center leaf-bg">
-      <div className="forest-card p-8 max-w-md w-full text-center animate-float">
+    <div className="h-screen w-full flex flex-col items-center justify-center leaf-bg p-4">
+      <div className="forest-card p-6 md:p-8 max-w-md w-full text-center animate-float">
         <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-forest-moss flex items-center justify-center text-forest-leaf">
-            <Leaf className="w-8 h-8" />
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-forest-moss flex items-center justify-center text-forest-leaf">
+            <Leaf className="w-7 h-7 md:w-8 md:h-8" />
           </div>
         </div>
         
-        <h1 className="text-2xl font-bold text-forest-bark mb-2">Welcome to Forest Mail</h1>
-        <p className="text-forest-bark/70 mb-6">Connect with your Gmail to enter the woodland</p>
+        <h1 className="text-xl md:text-2xl font-bold text-forest-bark mb-2">Welcome to Forest Mail</h1>
+        <p className="text-sm md:text-base text-forest-bark/70 mb-6">Connect with your Gmail to enter the woodland</p>
         
-        <div className="mb-6 text-sm text-forest-bark/80 p-4 bg-forest-moss/10 rounded-lg">
+        <div className="mb-6 text-xs md:text-sm text-forest-bark/80 p-3 md:p-4 bg-forest-moss/10 rounded-lg">
           <p className="font-medium mb-2">🔒 Forest Mail needs permission to:</p>
-          <ul className="list-disc text-left mx-auto max-w-xs space-y-2">
+          <ul className="list-disc text-left mx-auto max-w-xs space-y-1 md:space-y-2 pl-4">
             <li>Read emails from your Gmail account</li>
             <li>Send emails on your behalf</li>
           </ul>
-          <p className="mt-3 text-xs">We only use these permissions to display and send emails through the Forest Mail interface.</p>
+          <p className="mt-2 md:mt-3 text-xs">We only use these permissions to display and send emails through the Forest Mail interface.</p>
         </div>
         
         {isLoading ? (
           <div className="flex flex-col items-center">
-            <div className="w-10 h-10 border-4 border-t-forest-leaf border-forest-moss/30 rounded-full animate-spin mb-4"></div>
-            <p className="text-forest-bark">Gathering leaves and twigs...</p>
+            <div className="w-8 h-8 md:w-10 md:h-10 border-4 border-t-forest-leaf border-forest-moss/30 rounded-full animate-spin mb-4"></div>
+            <p className="text-sm md:text-base text-forest-bark">Gathering leaves and twigs...</p>
           </div>
         ) : (
           <div className="flex justify-center">
             <button
               onClick={() => googleLogin()}
-              className="flex items-center gap-2 bg-white text-gray-700 font-medium px-6 py-3 rounded-full shadow hover:shadow-md transition-all"
+              className="flex items-center gap-2 bg-white text-gray-700 font-medium px-5 py-2 md:px-6 md:py-3 rounded-full shadow hover:shadow-md transition-all text-sm md:text-base"
             >
-              <img src="https://cdn.cdnlogo.com/logos/g/35/google-icon.svg" alt="Google" className="w-5 h-5" />
+              <img src="https://cdn.cdnlogo.com/logos/g/35/google-icon.svg" alt="Google" className="w-4 h-4 md:w-5 md:h-5" />
               Sign in with Google
             </button>
           </div>
         )}
         
-        <p className="mt-8 text-xs text-forest-bark/50">
+        <p className="mt-6 md:mt-8 text-xs text-forest-bark/50">
           Your magical forest adventure awaits behind your Gmail login
         </p>
       </div>
