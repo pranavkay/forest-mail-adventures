@@ -32,9 +32,9 @@ export const GmailSetupGuide = () => {
                     <li>https://www.googleapis.com/auth/gmail.send (for sending emails)</li>
                   </ul>
                 </li>
-                <li>Then go to "APIs & Services" > "Library" and enable the Gmail API</li>
+                <li>Then go to "APIs &amp; Services" &gt; "Library" and enable the Gmail API</li>
                 <li>Finally, go to "Credentials" and create OAuth 2.0 Client IDs for your app</li>
-                <li>Update your client ID in your app configuration</li>
+                <li>Update your client ID in your App.tsx file (GOOGLE_CLIENT_ID)</li>
                 <li>After updating everything, users will need to authorize again with the new permissions</li>
               </ol>
               

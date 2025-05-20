@@ -10,7 +10,7 @@ import { useUser } from '@/context/UserContext';
 const Index = () => {
   const [activeGuide, setActiveGuide] = useState('new-email');
   const { token } = useUser();
-  const [showSetupGuide, setShowSetupGuide] = useState(true); // Changed to true to always display the guide during development
+  const [showSetupGuide, setShowSetupGuide] = useState(true); // Always show the guide until properly configured
   
   useEffect(() => {
     const guideOrder = ['new-email', 'folders', 'search'];
@@ -32,7 +32,7 @@ const Index = () => {
         const isGoogleToken = token.includes('ya29.') || (token.includes('.') && JSON.parse(atob(token.split('.')[1])).iss === 'https://accounts.google.com');
         
         if (isGoogleToken) {
-          // Always show setup guide during development
+          // Always show setup guide until properly configured
           setShowSetupGuide(true);
         }
       } catch (e) {
