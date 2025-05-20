@@ -9,7 +9,7 @@ import { useUser } from '@/context/UserContext';
 
 const Index = () => {
   const [activeGuide, setActiveGuide] = useState('new-email');
-  const { token } = useUser();
+  const { token, hasGmailPermissions } = useUser();
   const [showSetupGuide, setShowSetupGuide] = useState(false);
   
   useEffect(() => {
@@ -27,28 +27,14 @@ const Index = () => {
   // Check if token exists and validate if it has Gmail scopes
   useEffect(() => {
     if (token) {
-      try {
-        // Check if it's a Google token
-        const isGoogleToken = token.includes('ya29.') || (token.includes('.') && JSON.parse(atob(token.split('.')[1])).iss === 'https://accounts.google.com');
-        
-        if (isGoogleToken) {
-          // Check for required Gmail scopes
-          const tokenPayload = token.includes('.') ? JSON.parse(atob(token.split('.')[1])) : null;
-          const tokenScopes = tokenPayload?.scope?.split(' ') || [];
-          
-          const hasReadScope = tokenScopes.includes('https://www.googleapis.com/auth/gmail.readonly');
-          const hasSendScope = tokenScopes.includes('https://www.googleapis.com/auth/gmail.send');
-          
-          // Show setup guide if required scopes are missing
-          setShowSetupGuide(!hasReadScope || !hasSendScope);
-        }
-      } catch (e) {
-        console.error('Error checking token:', e);
-        // If we can't parse the token, show the setup guide just in case
-        setShowSetupGuide(true);
-      }
+      // Use the new helper function to check for Gmail permissions
+      const hasPermissions = hasGmailPermissions();
+      console.log('Gmail permissions check:', hasPermissions);
+      
+      // Show setup guide if permissions are missing
+      setShowSetupGuide(!hasPermissions);
     }
-  }, [token]);
+  }, [token, hasGmailPermissions]);
   
   return (
     <div className="flex h-screen w-full">

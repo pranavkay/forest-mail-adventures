@@ -17,12 +17,12 @@ export const GmailSetupGuide = () => {
     <Alert className="mb-6 border-forest-berry/40 bg-forest-berry/5">
       <AlertTitle className="flex items-center text-lg font-semibold text-forest-berry">
         <AlertTriangle className="mr-2 h-5 w-5" /> 
-        Gmail Permission Required
+        Gmail Permissions Required
       </AlertTitle>
       <AlertDescription>
         <div className="space-y-3 py-2">
           <p>
-            Forest Mail needs permission to read and send emails with your Gmail account. It appears you didn't grant these permissions during login.
+            Forest Mail needs specific permissions to access your Gmail. Our login process needs to request these permissions explicitly.
           </p>
           
           <div className="bg-white/50 rounded-lg p-3 space-y-2 text-sm">
@@ -43,20 +43,29 @@ export const GmailSetupGuide = () => {
                 <p className="font-medium text-forest-bark">To fix this issue:</p>
                 <ol className="list-decimal ml-4 mt-1 space-y-1">
                   <li>Click the button below to log out completely</li>
-                  <li>Sign in again with your Google account</li>
-                  <li>When prompted, make sure to check "Allow" for all requested permissions</li>
+                  <li>When prompted to sign in, choose your Google account</li>
+                  <li>Google will show a permissions screen - you <strong>must</strong> approve both permissions</li>
+                  <li>If no permissions screen appears, you may need to revoke permissions in your Google Account settings first</li>
                 </ol>
               </div>
             </div>
           </div>
           
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap gap-3">
             <Button 
               onClick={handleLogout}
               variant="destructive"
               className="flex items-center gap-2"
             >
               Log out and try again
+            </Button>
+            
+            <Button 
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={() => window.open('https://myaccount.google.com/permissions', '_blank')}
+            >
+              Manage Google Permissions
             </Button>
           </div>
         </div>

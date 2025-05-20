@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GoogleLogin } from '@react-oauth/google';
+import { useGoogleLogin } from '@react-oauth/google';
 import { Leaf } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 import { toast } from '@/hooks/use-toast';
@@ -13,7 +13,7 @@ const Login = () => {
 
   // Clear any previous login data on component mount
   useEffect(() => {
-    localStorage.removeItem('gmail_token');
+    localStorage.clear(); // Clear all data to ensure a fresh start
   }, []);
 
   // Check if user is already logged in
@@ -24,26 +24,60 @@ const Login = () => {
     }
   }, [navigate]);
 
-  const handleLoginSuccess = (credentialResponse: any) => {
+  const handleGoogleSuccess = async (tokenResponse) => {
     setIsLoading(true);
     
-    console.log('Login successful, credential received:', credentialResponse);
+    console.log('Google login successful:', tokenResponse);
     
-    if (credentialResponse.credential) {
-      login(credentialResponse.credential);
+    if (tokenResponse.access_token) {
+      // Save the token and credentials
+      localStorage.setItem('gmail_access_token', tokenResponse.access_token);
       
-      toast({
-        title: "Login successful!",
-        description: "Welcome to Forest Mail",
-      });
-      
-      // Simulate loading email data
-      setTimeout(() => {
+      // Get user info to create a more complete token object
+      try {
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: {
+            Authorization: `Bearer ${tokenResponse.access_token}`
+          }
+        });
+        
+        if (userInfoResponse.ok) {
+          const userInfo = await userInfoResponse.json();
+          
+          // Create a composite token object with access_token and scopes
+          const compositeToken = JSON.stringify({
+            access_token: tokenResponse.access_token,
+            scope: tokenResponse.scope,
+            user_info: userInfo
+          });
+          
+          login(compositeToken);
+          
+          toast({
+            title: "Login successful!",
+            description: "Welcome to Forest Mail",
+          });
+          
+          // Simulate loading email data
+          setTimeout(() => {
+            setIsLoading(false);
+            navigate('/');
+          }, 1000);
+        } else {
+          throw new Error('Failed to fetch user info');
+        }
+      } catch (error) {
+        console.error('Error fetching user info:', error);
         setIsLoading(false);
-        navigate('/');
-      }, 2000);
+        
+        toast({
+          title: "Login failed",
+          description: "Unable to get user information",
+          variant: "destructive"
+        });
+      }
     } else {
-      console.error('No credential received from Google login');
+      console.error('No access token received from Google login');
       setIsLoading(false);
       
       toast({
@@ -54,8 +88,8 @@ const Login = () => {
     }
   };
 
-  const handleLoginError = () => {
-    console.error('Gmail login failed');
+  const handleGoogleError = (error) => {
+    console.error('Gmail login failed:', error);
     setIsLoading(false);
     
     toast({
@@ -64,6 +98,14 @@ const Login = () => {
       variant: "destructive"
     });
   };
+  
+  // Use the useGoogleLogin hook to request Gmail scopes
+  const googleLogin = useGoogleLogin({
+    onSuccess: handleGoogleSuccess,
+    onError: handleGoogleError,
+    scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
+    flow: 'implicit',
+  });
 
   return (
     <div className="h-screen w-full flex flex-col items-center justify-center leaf-bg">
@@ -93,15 +135,13 @@ const Login = () => {
           </div>
         ) : (
           <div className="flex justify-center">
-            <GoogleLogin
-              onSuccess={handleLoginSuccess}
-              onError={handleLoginError}
-              theme="filled_blue"
-              shape="pill"
-              size="large"
-              text="signin_with"
-              useOneTap={false}
-            />
+            <button
+              onClick={() => googleLogin()}
+              className="flex items-center gap-2 bg-white text-gray-700 font-medium px-6 py-3 rounded-full shadow hover:shadow-md transition-all"
+            >
+              <img src="https://cdn.cdnlogo.com/logos/g/35/google-icon.svg" alt="Google" className="w-5 h-5" />
+              Sign in with Google
+            </button>
           </div>
         )}
         
