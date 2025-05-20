@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
@@ -128,8 +127,7 @@ const Login = () => {
     onError: handleGoogleError,
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
     flow: 'implicit',
-    select_account: true,
-    auto_select: false,
+    // Removing the select_account and auto_select properties as they're not supported in the implicit flow type
   });
 
   return (

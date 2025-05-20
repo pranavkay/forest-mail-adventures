@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
 import { EmailList } from '@/components/EmailList';
 import { ComposeEmail } from '@/components/ComposeEmail';
@@ -11,6 +12,9 @@ const Index = () => {
   const [activeGuide, setActiveGuide] = useState('new-email');
   const { token, hasGmailPermissions } = useUser();
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const location = useLocation();
+  const currentFolder = new URLSearchParams(location.search).get('folder') || 'inbox';
   
   useEffect(() => {
     const guideOrder = ['new-email', 'folders', 'search'];
@@ -36,6 +40,12 @@ const Index = () => {
     }
   }, [token, hasGmailPermissions]);
   
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Searching for:', searchQuery);
+    // We'll implement actual search functionality later
+  };
+  
   return (
     <div className="flex h-screen w-full">
       <Sidebar />
@@ -44,24 +54,29 @@ const Index = () => {
         <div className="max-w-4xl mx-auto">
           <header className="mb-6">
             <div className="forest-card p-6 mb-4">
-              <h1 className="text-2xl font-bold text-forest-bark mb-2">Welcome to your Forest Mail</h1>
+              <h1 className="text-2xl font-bold text-forest-bark mb-2">
+                {currentFolder === 'inbox' ? 'Welcome to your Forest Mail' : 
+                 `Browsing ${currentFolder.charAt(0).toUpperCase() + currentFolder.slice(1)} Messages`}
+              </h1>
               <p className="text-forest-bark/70">Where your messages flutter and leaves gently fall</p>
             </div>
             
             {showSetupGuide && <GmailSetupGuide />}
             
-            <div className="relative">
+            <form onSubmit={handleSearch} className="relative">
               <input 
                 type="text" 
                 placeholder="Search through the forest..." 
                 className="forest-input w-full pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
               <span className="absolute left-3 top-1/2 transform -translate-y-1/2">🔍</span>
-            </div>
+            </form>
           </header>
           
           <main>
-            <EmailList />
+            <EmailList folderId={currentFolder} searchQuery={searchQuery} />
           </main>
         </div>
       </div>

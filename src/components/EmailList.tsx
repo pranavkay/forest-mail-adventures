@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { emails as mockEmails, Email } from '@/data/mockData';
@@ -9,10 +10,16 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { GmailSetupGuide } from './GmailSetupGuide';
 
-export const EmailList = () => {
+interface EmailListProps {
+  folderId?: string;
+  searchQuery?: string;
+}
+
+export const EmailList = ({ folderId = 'inbox', searchQuery = '' }: EmailListProps) => {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [emails, setEmails] = useState<Email[]>([]);
+  const [filteredEmails, setFilteredEmails] = useState<Email[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { token, logout, tokenObject, getAccessToken } = useUser();
@@ -97,7 +104,33 @@ export const EmailList = () => {
     loadEmails();
   }, [token]);
   
-  const selectedEmail = emails.find(email => email.id === selectedEmailId);
+  // Filter emails whenever folder, search query, or emails change
+  useEffect(() => {
+    console.log(`Filtering emails for folder: ${folderId}, search: "${searchQuery}"`);
+    
+    let filtered = emails;
+    
+    // Apply folder filter
+    if (folderId && folderId !== 'inbox') {
+      filtered = filtered.filter(email => email.labels?.includes(folderId));
+    }
+    
+    // Apply search query filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(email => 
+        email.subject.toLowerCase().includes(query) || 
+        email.body.toLowerCase().includes(query) ||
+        email.from.name.toLowerCase().includes(query) ||
+        email.from.email.toLowerCase().includes(query)
+      );
+    }
+    
+    setFilteredEmails(filtered);
+    
+  }, [emails, folderId, searchQuery]);
+  
+  const selectedEmail = filteredEmails.find(email => email.id === selectedEmailId);
   
   const handleEmailClick = (emailId: string) => {
     setSelectedEmailId(emailId);
@@ -119,8 +152,18 @@ export const EmailList = () => {
           {needsPermissions && <GmailSetupGuide />}
         
           <div className="forest-card">
-            <h2 className="text-xl font-semibold text-forest-bark mb-1">Leaf Pile</h2>
-            <p className="text-sm text-forest-bark/70 mb-4">Your recent messages from the forest</p>
+            <h2 className="text-xl font-semibold text-forest-bark mb-1">
+              {folderId === 'inbox' 
+                ? 'Leaf Pile' 
+                : folderId.charAt(0).toUpperCase() + folderId.slice(1) + ' Messages'
+              }
+            </h2>
+            <p className="text-sm text-forest-bark/70 mb-4">
+              {searchQuery 
+                ? `Searched for "${searchQuery}" - ${filteredEmails.length} results` 
+                : 'Your recent messages from the forest'
+              }
+            </p>
             
             {error && !needsPermissions && (
               <Alert variant="destructive" className="mb-4">
@@ -154,7 +197,7 @@ export const EmailList = () => {
             )}
             
             <div className="space-y-2">
-              {emails.map((email) => (
+              {filteredEmails.map((email) => (
                 <EmailCard 
                   key={email.id} 
                   email={email} 
@@ -163,9 +206,9 @@ export const EmailList = () => {
               ))}
             </div>
             
-            {emails.length === 0 && !isLoading && (
+            {filteredEmails.length === 0 && !isLoading && (
               <div className="text-center py-8 text-forest-bark/70">
-                No messages found in your forest
+                No messages found in this part of the forest
               </div>
             )}
           </div>

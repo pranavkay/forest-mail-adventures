@@ -1,9 +1,11 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { folders } from '@/data/mockData';
 import { Archive, Bird, Book, Contact, Leaf, Mail, Menu, Trash2, LogOut } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '@/context/UserContext';
+import { toast } from '@/hooks/use-toast';
 
 const getIconComponent = (iconName: string | undefined) => {
   switch (iconName) {
@@ -26,12 +28,43 @@ export const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState('inbox');
   const location = useLocation();
+  const navigate = useNavigate();
   const { logout } = useUser();
-
+  
   const mainLinks = [
     { id: 'home', name: 'Forest Home', icon: <Mail className="w-5 h-5" />, path: '/' },
     { id: 'contacts', name: 'Woodland Friends', icon: <Contact className="w-5 h-5" />, path: '/contacts' },
   ];
+
+  const handleFolderSelect = (folderId: string) => {
+    setActiveFolderId(folderId);
+    
+    // Navigate to the main page with the folder as a query param
+    navigate(`/?folder=${folderId}`);
+    
+    // Show a toast notification
+    toast({
+      title: `${folders.find(f => f.id === folderId)?.name} selected`,
+      description: "Viewing emails in this folder",
+    });
+  };
+  
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logout successful",
+      description: "You have left the forest",
+    });
+  };
+  
+  // Get current folder from URL on initial load
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const folderParam = params.get('folder');
+    if (folderParam) {
+      setActiveFolderId(folderParam);
+    }
+  }, [location.search]);
 
   return (
     <div 
@@ -103,7 +136,7 @@ export const Sidebar = () => {
           {folders.map((folder) => (
             <button
               key={folder.id}
-              onClick={() => setActiveFolderId(folder.id)}
+              onClick={() => handleFolderSelect(folder.id)}
               className={cn(
                 'w-full flex items-center p-2 rounded-xl transition-colors',
                 activeFolderId === folder.id
@@ -136,7 +169,7 @@ export const Sidebar = () => {
         collapsed ? "flex justify-center" : ""
       )}>
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className={cn(
             'w-full flex items-center p-2 rounded-xl transition-colors text-sidebar-foreground hover:bg-sidebar-accent',
             collapsed ? 'justify-center' : 'justify-start'
