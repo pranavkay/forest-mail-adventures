@@ -1,9 +1,9 @@
-
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { folders } from '@/data/mockData';
-import { Archive, Bird, Book, Contact, Leaf, Mail, Menu, Trash2 } from 'lucide-react';
+import { Archive, Bird, Book, Contact, Leaf, Mail, Menu, Trash2, LogOut } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useUser } from '@/context/UserContext';
 
 const getIconComponent = (iconName: string | undefined) => {
   switch (iconName) {
@@ -26,6 +26,7 @@ export const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState('inbox');
   const location = useLocation();
+  const { logout } = useUser();
 
   const mainLinks = [
     { id: 'home', name: 'Forest Home', icon: <Mail className="w-5 h-5" />, path: '/' },
@@ -128,6 +129,27 @@ export const Sidebar = () => {
             </button>
           ))}
         </nav>
+      </div>
+      
+      <div className={cn(
+        "absolute bottom-16 left-0 right-0 px-4 py-2",
+        collapsed ? "flex justify-center" : ""
+      )}>
+        <button
+          onClick={logout}
+          className={cn(
+            'w-full flex items-center p-2 rounded-xl transition-colors text-sidebar-foreground hover:bg-sidebar-accent',
+            collapsed ? 'justify-center' : 'justify-start'
+          )}
+        >
+          <div className="flex items-center justify-center">
+            <LogOut className="w-5 h-5" />
+          </div>
+          
+          {!collapsed && (
+            <span className="ml-3 text-sm">Leave Forest</span>
+          )}
+        </button>
       </div>
       
       <div className={cn(

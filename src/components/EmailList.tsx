@@ -1,11 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { emails } from '@/data/mockData';
+import { emails as mockEmails } from '@/data/mockData';
 import { format } from 'date-fns';
+import { fetchEmails } from '@/services/gmailService';
+import { useUser } from '@/context/UserContext';
 
 export const EmailList = () => {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [emails, setEmails] = useState(mockEmails);
+  const [isLoading, setIsLoading] = useState(false);
+  const { token } = useUser();
+  
+  useEffect(() => {
+    const loadEmails = async () => {
+      if (token) {
+        setIsLoading(true);
+        try {
+          const gmailEmails = await fetchEmails(token);
+          // In a real application, we might merge or replace local emails
+          // For now, we'll just add any Gmail emails to our mock data
+          setEmails([...gmailEmails, ...mockEmails]);
+        } catch (error) {
+          console.error('Failed to fetch emails:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    loadEmails();
+  }, [token]);
   
   const selectedEmail = emails.find(email => email.id === selectedEmailId);
   
@@ -26,6 +51,12 @@ export const EmailList = () => {
             <h2 className="text-xl font-semibold text-forest-bark mb-1">Leaf Pile</h2>
             <p className="text-sm text-forest-bark/70 mb-4">Your recent messages from the forest</p>
             
+            {isLoading && (
+              <div className="flex justify-center p-4">
+                <div className="w-8 h-8 border-4 border-t-forest-leaf border-forest-moss/30 rounded-full animate-spin"></div>
+              </div>
+            )}
+            
             <div className="space-y-2">
               {emails.map((email) => (
                 <EmailCard 
@@ -35,6 +66,12 @@ export const EmailList = () => {
                 />
               ))}
             </div>
+            
+            {emails.length === 0 && !isLoading && (
+              <div className="text-center py-8 text-forest-bark/70">
+                No messages found in your forest
+              </div>
+            )}
           </div>
         </div>
       ) : (
