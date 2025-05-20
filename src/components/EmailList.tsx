@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { emails as mockEmails } from '@/data/mockData';
@@ -18,9 +19,20 @@ export const EmailList = () => {
         setIsLoading(true);
         try {
           const gmailEmails = await fetchEmails(token);
+          // Transform ForestEmail to match Email format
+          const transformedEmails = gmailEmails.map(email => ({
+            ...email,
+            from: {
+              id: email.from.id,
+              name: email.from.name,
+              woodlandName: email.from.woodlandName,
+              email: email.from.email,
+              avatar: email.from.avatar,
+              animal: email.from.animal
+            }
+          }));
           // In a real application, we might merge or replace local emails
-          // For now, we'll just add any Gmail emails to our mock data
-          setEmails([...gmailEmails, ...mockEmails]);
+          setEmails([...transformedEmails, ...mockEmails]);
         } catch (error) {
           console.error('Failed to fetch emails:', error);
         } finally {
@@ -81,7 +93,7 @@ export const EmailList = () => {
   );
 };
 
-const EmailCard = ({ email, onClick }: { email: typeof emails[0], onClick: () => void }) => {
+const EmailCard = ({ email, onClick }: { email: typeof mockEmails[0], onClick: () => void }) => {
   const date = new Date(email.received);
   const formattedDate = format(date, 'MMM d');
   
@@ -119,7 +131,7 @@ const EmailCard = ({ email, onClick }: { email: typeof emails[0], onClick: () =>
   );
 };
 
-const EmailDetail = ({ email, onBack }: { email: typeof emails[0] | undefined, onBack: () => void }) => {
+const EmailDetail = ({ email, onBack }: { email: typeof mockEmails[0] | undefined, onBack: () => void }) => {
   if (!email) return null;
   
   const date = new Date(email.received);

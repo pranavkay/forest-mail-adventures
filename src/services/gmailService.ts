@@ -28,10 +28,12 @@ interface GmailEmail {
 interface ForestEmail {
   id: string;
   from: {
+    id: string;  // Added to match Contact interface
     name: string;
     email: string;
     woodlandName: string;
     animal: string;
+    avatar: string;  // Added to match Contact interface
   };
   subject: string;
   body: string;
@@ -78,10 +80,12 @@ const mockTransformGmailData = (gmailEmails: GmailEmail[]): ForestEmail[] => {
     {
       id: 'g1',
       from: {
+        id: 'gmail-user-1',  // Added id field to match Contact interface
         name: 'Gmail User',
         email: 'gmail@gmail.com',
         woodlandName: 'Gentle Deer',
-        animal: 'fox'
+        animal: 'fox',
+        avatar: '/avatar-fox.png'  // Added avatar field to match Contact interface
       },
       subject: 'Welcome to Gmail Forest Integration',
       body: 'This is a sample email to demonstrate Gmail integration with Forest Mail.',
