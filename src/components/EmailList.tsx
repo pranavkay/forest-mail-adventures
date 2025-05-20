@@ -5,51 +5,60 @@ import { format } from 'date-fns';
 import { fetchEmails } from '@/services/gmailService';
 import { useUser } from '@/context/UserContext';
 import { toast } from '@/hooks/use-toast';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { ReloadIcon } from "@radix-ui/react-icons";
 
 export const EmailList = () => {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [emails, setEmails] = useState<Email[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { token } = useUser();
   
-  useEffect(() => {
-    const loadEmails = async () => {
-      if (token) {
-        setIsLoading(true);
-        try {
-          console.log('Loading emails from Gmail API');
-          const gmailEmails = await fetchEmails(token);
-          
-          // If we successfully got Gmail emails, use those
-          // Otherwise, fall back to mock data
-          if (gmailEmails && gmailEmails.length > 0) {
-            console.log(`Loaded ${gmailEmails.length} emails from Gmail`);
-            setEmails(gmailEmails);
-          } else {
-            console.log('No Gmail emails found, using mock data');
-            setEmails(mockEmails);
-          }
-        } catch (error) {
-          console.error('Failed to fetch emails:', error);
-          toast({
-            title: "Couldn't load emails",
-            description: "There was a problem connecting to your email. Using sample data instead.",
-            variant: "destructive",
-          });
-          
-          // Fall back to mock data on error
+  const loadEmails = async () => {
+    if (token) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        console.log('Loading emails from Gmail API');
+        const gmailEmails = await fetchEmails(token);
+        
+        // If we successfully got Gmail emails, use those
+        // Otherwise, fall back to mock data
+        if (gmailEmails && gmailEmails.length > 0) {
+          console.log(`Loaded ${gmailEmails.length} emails from Gmail`);
+          setEmails(gmailEmails);
+        } else {
+          console.log('No Gmail emails found, using mock data');
           setEmails(mockEmails);
-        } finally {
-          setIsLoading(false);
+          toast({
+            title: "No emails found",
+            description: "We couldn't find any emails in your account. Showing sample data instead.",
+          });
         }
-      } else {
-        // No token, use mock data
-        console.log('No auth token, using mock data');
+      } catch (error: any) {
+        console.error('Failed to fetch emails:', error);
+        setError(error.message || "Error connecting to emails");
+        toast({
+          title: "Couldn't load emails",
+          description: "There was a problem connecting to your email. Using sample data instead.",
+          variant: "destructive",
+        });
+        
+        // Fall back to mock data on error
         setEmails(mockEmails);
+      } finally {
+        setIsLoading(false);
       }
-    };
-    
+    } else {
+      // No token, use mock data
+      console.log('No auth token, using mock data');
+      setEmails(mockEmails);
+    }
+  };
+  
+  useEffect(() => {
     loadEmails();
   }, [token]);
   
@@ -64,6 +73,10 @@ export const EmailList = () => {
     setIsEmailOpen(false);
   };
   
+  const handleRetry = () => {
+    loadEmails();
+  };
+  
   return (
     <div className="w-full">
       {!isEmailOpen ? (
@@ -71,6 +84,21 @@ export const EmailList = () => {
           <div className="forest-card">
             <h2 className="text-xl font-semibold text-forest-bark mb-1">Leaf Pile</h2>
             <p className="text-sm text-forest-bark/70 mb-4">Your recent messages from the forest</p>
+            
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTitle>Connection Error</AlertTitle>
+                <AlertDescription className="flex justify-between items-center">
+                  <span>{error}</span>
+                  <button 
+                    onClick={handleRetry} 
+                    className="bg-destructive/10 hover:bg-destructive/20 px-3 py-1 rounded flex items-center gap-2"
+                  >
+                    <ReloadIcon className="h-4 w-4" /> Retry
+                  </button>
+                </AlertDescription>
+              </Alert>
+            )}
             
             {isLoading && (
               <div className="flex justify-center p-4">

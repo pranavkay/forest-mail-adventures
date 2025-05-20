@@ -1,3 +1,4 @@
+
 // This is a Gmail service implementation using the Google API
 import { Email, Contact } from '@/data/mockData';
 
@@ -31,7 +32,7 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
   }
 
   try {
-    console.log('Fetching emails from Gmail API with token');
+    console.log('Fetching emails from Gmail API with token:', token.substring(0, 10) + '...');
     
     // Get list of emails from Gmail API
     const response = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX', {
@@ -41,16 +42,28 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
     });
 
     if (!response.ok) {
-      const errorDetails = await response.json();
-      console.error('Gmail API error:', errorDetails);
+      // Try to get error details
+      let errorMessage = `HTTP Error: ${response.status} ${response.statusText}`;
+      try {
+        const errorDetails = await response.json();
+        console.error('Gmail API error details:', errorDetails);
+        if (errorDetails.error && errorDetails.error.message) {
+          errorMessage = errorDetails.error.message;
+        }
+      } catch (e) {
+        console.error('Could not parse error response:', e);
+      }
       
       // Check if we have an auth error
       if (response.status === 401) {
         console.error('Authentication error - token may be invalid or expired');
-        throw new Error('Authentication error - please login again');
+        throw new Error('Authentication failed - please login again');
+      } else if (response.status === 403) {
+        console.error('Permission error - insufficient permissions to access Gmail');
+        throw new Error('Permission denied - email scope may not be enabled');
       }
       
-      throw new Error(`Failed to fetch emails: ${response.statusText}`);
+      throw new Error(`Failed to fetch emails: ${errorMessage}`);
     }
 
     const data = await response.json();
