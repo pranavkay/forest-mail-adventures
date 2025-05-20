@@ -95,24 +95,45 @@ export const EmailList: React.FC<EmailListProps> = ({
     }
   };
 
-  // Get a random woodland title for contacts
-  const getWoodlandTitle = (email: string) => {
-    const titles = [
-      'Forest Guardian',
-      'Leaf Whisperer',
-      'Woodland Sage',
-      'Mushroom Keeper',
-      'Acorn Collector',
-      'Fern Friend',
-      'Shadow Dancer',
-      'Dew Gatherer',
-      'Moonlight Guide',
-      'Tree Speaker'
+  // Get a whimsical woodland name based on email
+  const getWhimsicalName = (email: string) => {
+    const firstNames = [
+      'Whisperleaf', 'Moonbeam', 'Dappleshade', 'Twinkling', 'Dewdrop', 
+      'Brambleheart', 'Starlight', 'Mistybrook', 'Fernwhistle', 'Honeyglow',
+      'Thistledown', 'Shimmerwind', 'Ripplecreek', 'Amberbark', 'Frostwhisper',
+      'Willowsong', 'Cinderpath', 'Embergleam', 'Hazelnut', 'Pinecone'
     ];
     
-    // Use email as a seed for deterministic but random-looking selection
+    const secondNames = [
+      'Whisperer', 'Keeper', 'Guardian', 'Warden', 'Wanderer',
+      'Dreamer', 'Dancer', 'Weaver', 'Seeker', 'Explorer',
+      'Sage', 'Tracker', 'Healer', 'Collector', 'Sentinel',
+      'Ranger', 'Storyteller', 'Forager', 'Watcher', 'Guide'
+    ];
+    
+    // Use email as a seed for deterministic but unique selection
     const charSum = email.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    return titles[charSum % titles.length];
+    const firstName = firstNames[charSum % firstNames.length];
+    const secondName = secondNames[(charSum * 13) % secondNames.length];
+    
+    return `${firstName} ${secondName}`;
+  };
+
+  // Generate a woodland creature emoji based on email
+  const getWoodlandEmoji = (email: string) => {
+    const emojis = ['🦊', '🦉', '🦡', '🐿️', '🦝', '🐇', '🦔', '🐿️', '🍄', '🦌', '🐺', '🦢', '🦅', '🦇', '🐸'];
+    const charSum = email.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return emojis[charSum % emojis.length];
+  };
+  
+  // Generate a pastel color based on email
+  const getPastelColor = (email: string) => {
+    const colors = [
+      '#FFD6E0', '#FFEFCF', '#D4F0F0', '#E2F0CB', '#E0DAFE', 
+      '#F0E6D2', '#D5E8D4', '#D5F2E3', '#F6D7F1', '#FAD6B8'
+    ];
+    const charSum = email.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return colors[charSum % colors.length];
   };
 
   // Load emails on component mount and when dependencies change
@@ -240,31 +261,24 @@ export const EmailList: React.FC<EmailListProps> = ({
           <h2 className="text-2xl font-bold mb-4 text-forest-bark">{selectedEmail.subject}</h2>
           
           <div className="flex items-center mb-6">
-            <div className="relative">
-              <img 
-                src={selectedEmail.from.avatar || '/avatar-fox.png'} 
-                alt={selectedEmail.from.animal || 'fox'} 
-                className="w-12 h-12 rounded-full border-2 border-forest-leaf animate-float"
-              />
-              <div className="absolute bottom-0 right-0 w-4 h-4 bg-white rounded-full flex items-center justify-center">
-                <span className="text-xs">
-                  {selectedEmail.from.animal === 'fox' ? '🦊' :
-                   selectedEmail.from.animal === 'owl' ? '🦉' :
-                   selectedEmail.from.animal === 'rabbit' ? '🐰' :
-                   selectedEmail.from.animal === 'squirrel' ? '🐿️' :
-                   selectedEmail.from.animal === 'cat' ? '🐱' :
-                   selectedEmail.from.animal === 'dog' ? '🐶' :
-                   selectedEmail.from.animal === 'bird' ? '🐦' : '🦊'}
-                </span>
+            <div className="relative mr-4">
+              <div 
+                className="w-12 h-12 rounded-full flex items-center justify-center animate-float"
+                style={{ 
+                  backgroundColor: getPastelColor(selectedEmail.from.email),
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                }}
+              >
+                <span className="text-2xl">{getWoodlandEmoji(selectedEmail.from.email)}</span>
               </div>
             </div>
-            <div className="ml-4">
+            <div>
               <div className="font-medium text-forest-berry">
-                {selectedEmail.from.animal ? `${selectedEmail.from.animal.charAt(0).toUpperCase() + selectedEmail.from.animal.slice(1)} of the Woods` : selectedEmail.from.name}
+                {selectedEmail.from.name}
               </div>
               <div className="text-sm text-forest-bark/70">{selectedEmail.from.email}</div>
               <div className="text-xs text-forest-leaf font-medium">
-                {selectedEmail.from.woodlandName || getWoodlandTitle(selectedEmail.from.email)}
+                {getWhimsicalName(selectedEmail.from.email)}
               </div>
             </div>
           </div>
@@ -309,30 +323,23 @@ export const EmailList: React.FC<EmailListProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <div className="relative mr-3">
-                  <img 
-                    src={email.from.avatar || '/avatar-fox.png'} 
-                    alt={email.from.name} 
-                    className={`w-10 h-10 rounded-full border-2 ${!email.read ? 'border-forest-leaf animate-float' : 'border-forest-moss'}`}
-                  />
-                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-white rounded-full flex items-center justify-center">
-                    <span className="text-xs">
-                      {email.from.animal === 'fox' ? '🦊' :
-                       email.from.animal === 'owl' ? '🦉' :
-                       email.from.animal === 'rabbit' ? '🐰' :
-                       email.from.animal === 'squirrel' ? '🐿️' :
-                       email.from.animal === 'cat' ? '🐱' :
-                       email.from.animal === 'dog' ? '🐶' :
-                       email.from.animal === 'bird' ? '🐦' : '🦊'}
-                    </span>
+                  <div 
+                    className={`w-10 h-10 rounded-full flex items-center justify-center ${!email.read ? 'animate-float' : ''}`}
+                    style={{ 
+                      backgroundColor: getPastelColor(email.from.email),
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
+                    }}
+                  >
+                    <span className="text-xl">{getWoodlandEmoji(email.from.email)}</span>
                   </div>
                 </div>
                 <div>
                   <div className={`font-medium ${!email.read ? 'font-bold text-forest-bark' : 'text-forest-berry'}`}>
-                    {email.from.animal ? `${email.from.animal.charAt(0).toUpperCase() + email.from.animal.slice(1)} of the Woods` : email.from.name}
+                    {email.from.name}
                   </div>
                   <div className="text-xs text-forest-bark/70">{email.from.email}</div>
-                  <div className="text-xs text-forest-leaf">
-                    {email.from.woodlandName || getWoodlandTitle(email.from.email)}
+                  <div className="text-xs text-forest-leaf font-medium">
+                    {getWhimsicalName(email.from.email)}
                   </div>
                 </div>
               </div>
