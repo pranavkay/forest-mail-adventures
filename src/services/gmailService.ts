@@ -3,6 +3,8 @@
 // In a real application, you would need to handle token refresh,
 // error handling, pagination, etc.
 
+import { Email, Contact } from '@/data/mockData';
+
 interface GmailEmail {
   id: string;
   snippet: string;
@@ -25,23 +27,8 @@ interface GmailEmail {
   internalDate: string;
 }
 
-interface ForestEmail {
-  id: string;
-  from: {
-    id: string;  // Added to match Contact interface
-    name: string;
-    email: string;
-    woodlandName: string;
-    animal: string;
-    avatar: string;  // Added to match Contact interface
-  };
-  subject: string;
-  body: string;
-  received: string;
-  read: boolean;
-}
-
-export const fetchEmails = async (token: string): Promise<ForestEmail[]> => {
+// Using the Email type from mockData to ensure compatibility
+export const fetchEmails = async (token: string): Promise<Email[]> => {
   try {
     // In a real implementation, you would:
     // 1. Use the token to fetch emails from Gmail API
@@ -71,7 +58,7 @@ export const sendEmail = async (token: string, email: any): Promise<boolean> => 
 };
 
 // Helper functions
-const mockTransformGmailData = (gmailEmails: GmailEmail[]): ForestEmail[] => {
+const mockTransformGmailData = (gmailEmails: GmailEmail[]): Email[] => {
   // In a real application, this would transform Gmail API data
   // to match our ForestEmail format
   
@@ -80,12 +67,12 @@ const mockTransformGmailData = (gmailEmails: GmailEmail[]): ForestEmail[] => {
     {
       id: 'g1',
       from: {
-        id: 'gmail-user-1',  // Added id field to match Contact interface
+        id: 'gmail-user-1',
         name: 'Gmail User',
         email: 'gmail@gmail.com',
         woodlandName: 'Gentle Deer',
-        animal: 'fox',
-        avatar: '/avatar-fox.png'  // Added avatar field to match Contact interface
+        animal: 'fox', // Using a valid animal type from the union
+        avatar: '/avatar-fox.png'
       },
       subject: 'Welcome to Gmail Forest Integration',
       body: 'This is a sample email to demonstrate Gmail integration with Forest Mail.',

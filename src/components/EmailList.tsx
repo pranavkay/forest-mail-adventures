@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { emails as mockEmails } from '@/data/mockData';
+import { emails as mockEmails, Email } from '@/data/mockData';
 import { format } from 'date-fns';
 import { fetchEmails } from '@/services/gmailService';
 import { useUser } from '@/context/UserContext';
@@ -9,7 +8,7 @@ import { useUser } from '@/context/UserContext';
 export const EmailList = () => {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
-  const [emails, setEmails] = useState(mockEmails);
+  const [emails, setEmails] = useState<Email[]>(mockEmails);
   const [isLoading, setIsLoading] = useState(false);
   const { token } = useUser();
   
@@ -19,20 +18,8 @@ export const EmailList = () => {
         setIsLoading(true);
         try {
           const gmailEmails = await fetchEmails(token);
-          // Transform ForestEmail to match Email format
-          const transformedEmails = gmailEmails.map(email => ({
-            ...email,
-            from: {
-              id: email.from.id,
-              name: email.from.name,
-              woodlandName: email.from.woodlandName,
-              email: email.from.email,
-              avatar: email.from.avatar,
-              animal: email.from.animal
-            }
-          }));
           // In a real application, we might merge or replace local emails
-          setEmails([...transformedEmails, ...mockEmails]);
+          setEmails([...gmailEmails, ...mockEmails]);
         } catch (error) {
           console.error('Failed to fetch emails:', error);
         } finally {
@@ -93,7 +80,7 @@ export const EmailList = () => {
   );
 };
 
-const EmailCard = ({ email, onClick }: { email: typeof mockEmails[0], onClick: () => void }) => {
+const EmailCard = ({ email, onClick }: { email: Email, onClick: () => void }) => {
   const date = new Date(email.received);
   const formattedDate = format(date, 'MMM d');
   
@@ -131,7 +118,7 @@ const EmailCard = ({ email, onClick }: { email: typeof mockEmails[0], onClick: (
   );
 };
 
-const EmailDetail = ({ email, onBack }: { email: typeof mockEmails[0] | undefined, onBack: () => void }) => {
+const EmailDetail = ({ email, onBack }: { email: Email | undefined, onBack: () => void }) => {
   if (!email) return null;
   
   const date = new Date(email.received);
