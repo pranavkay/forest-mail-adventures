@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { fetchEmails } from '@/data/mockData';
 import { Email } from '@/types/email';
 import { useUser } from '@/context/UserContext';
-import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
 import { 
   Pagination, 
   PaginationContent, 
@@ -13,6 +13,7 @@ import {
   PaginationNext, 
   PaginationPrevious 
 } from "@/components/ui/pagination";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface EmailListProps {
   folderId: string;
@@ -185,6 +186,31 @@ export const EmailList: React.FC<EmailListProps> = ({
     return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
+  // Enhanced email body formatting
+  const formatEmailBody = (body: string) => {
+    // Replace URLs with hyperlinks
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const withLinks = body.replace(urlRegex, '<a href="$1" class="text-forest-leaf underline hover:text-forest-berry" target="_blank" rel="noopener noreferrer">$1</a>');
+    
+    // Convert line breaks to HTML
+    const withLineBreaks = withLinks.replace(/\n/g, '<br />');
+    
+    // Split paragraphs
+    const paragraphs = withLineBreaks.split('<br /><br />');
+    
+    return (
+      <>
+        {paragraphs.map((paragraph, index) => (
+          <p 
+            key={index} 
+            className={`mb-3 ${index === 0 ? 'text-lg' : ''}`}
+            dangerouslySetInnerHTML={{ __html: paragraph }}
+          />
+        ))}
+      </>
+    );
+  };
+
   if (!token) {
     return (
       <div className="p-6 forest-card text-center">
@@ -283,9 +309,11 @@ export const EmailList: React.FC<EmailListProps> = ({
             </div>
           </div>
           
-          <div className="prose max-w-none text-forest-bark/90 bg-forest-cream/50 p-4 rounded-lg border border-forest-moss/30">
-            <p>{selectedEmail.body}</p>
-          </div>
+          <Card className="overflow-hidden shadow-md">
+            <CardContent className="prose max-w-none text-forest-bark/90 bg-gradient-to-b from-forest-cream/70 to-white/90 p-6 rounded-lg">
+              {formatEmailBody(selectedEmail.body)}
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
