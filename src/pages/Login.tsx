@@ -105,6 +105,7 @@ const Login = () => {
     onError: handleGoogleError,
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
     flow: 'implicit',
+    // Remove ux_mode as it's not supported in implicit flow
   });
 
   return (
