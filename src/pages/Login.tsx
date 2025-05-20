@@ -3,10 +3,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { Leaf } from 'lucide-react';
+import { useUser } from '@/context/UserContext';
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useUser();
 
   // Check if user is already logged in
   useEffect(() => {
@@ -19,24 +21,26 @@ const Login = () => {
   const handleLoginSuccess = (credentialResponse: any) => {
     setIsLoading(true);
     
-    // In a real implementation, you would:
-    // 1. Send the token to your backend
-    // 2. Backend would verify the token with Google
-    // 3. Backend would fetch initial email data
-    // 4. Return user profile and email data
+    // Store the token
+    console.log('Login successful, credential received:', credentialResponse);
     
-    // For prototype purposes, we'll just save the token
-    localStorage.setItem('gmail_token', credentialResponse.credential);
-    
-    // Simulate loading email data
-    setTimeout(() => {
+    if (credentialResponse.credential) {
+      login(credentialResponse.credential);
+      
+      // Simulate loading email data
+      setTimeout(() => {
+        setIsLoading(false);
+        navigate('/');
+      }, 2000);
+    } else {
+      console.error('No credential received from Google login');
       setIsLoading(false);
-      navigate('/');
-    }, 2000);
+    }
   };
 
   const handleLoginError = () => {
     console.error('Gmail login failed');
+    setIsLoading(false);
   };
 
   return (
@@ -49,7 +53,15 @@ const Login = () => {
         </div>
         
         <h1 className="text-2xl font-bold text-forest-bark mb-2">Welcome to Forest Mail</h1>
-        <p className="text-forest-bark/70 mb-8">Connect with your Gmail to enter the woodland</p>
+        <p className="text-forest-bark/70 mb-4">Connect with your Gmail to enter the woodland</p>
+        
+        <div className="mb-4 text-sm text-forest-bark/80">
+          <p>For this app to work properly, you'll need to grant permission to:</p>
+          <ul className="list-disc text-left mx-auto max-w-xs mt-2">
+            <li>Read emails from your Gmail account</li>
+            <li>Send emails on your behalf</li>
+          </ul>
+        </div>
         
         {isLoading ? (
           <div className="flex flex-col items-center">
@@ -66,6 +78,7 @@ const Login = () => {
               size="large"
               text="signin_with"
               useOneTap
+              scope="https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send"
             />
           </div>
         )}

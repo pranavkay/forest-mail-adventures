@@ -1,11 +1,16 @@
+
 import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { EmailList } from '@/components/EmailList';
 import { ComposeEmail } from '@/components/ComposeEmail';
 import { AnimalGuide } from '@/components/AnimalGuide';
+import { GmailSetupGuide } from '@/components/GmailSetupGuide';
+import { useUser } from '@/context/UserContext';
 
 const Index = () => {
   const [activeGuide, setActiveGuide] = useState('new-email');
+  const { token } = useUser();
+  const [showSetupGuide, setShowSetupGuide] = useState(false);
   
   useEffect(() => {
     const guideOrder = ['new-email', 'folders', 'search'];
@@ -19,6 +24,23 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
   
+  // Check if token exists but doesn't have Gmail scope
+  useEffect(() => {
+    if (token) {
+      try {
+        // Simple check to determine if we're dealing with a Google OAuth token
+        const isGoogleToken = token.includes('ya29.') || (token.includes('.') && JSON.parse(atob(token.split('.')[1])).iss === 'https://accounts.google.com');
+        
+        if (isGoogleToken) {
+          // This is a very basic check - in a production app, we would validate the token properly
+          setShowSetupGuide(true);
+        }
+      } catch (e) {
+        console.error('Error checking token:', e);
+      }
+    }
+  }, [token]);
+  
   return (
     <div className="flex h-screen w-full">
       <Sidebar />
@@ -30,6 +52,8 @@ const Index = () => {
               <h1 className="text-2xl font-bold text-forest-bark mb-2">Welcome to your Forest Mail</h1>
               <p className="text-forest-bark/70">Where your messages flutter and leaves gently fall</p>
             </div>
+            
+            {showSetupGuide && <GmailSetupGuide />}
             
             <div className="relative">
               <input 

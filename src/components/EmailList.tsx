@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { emails as mockEmails, Email } from '@/data/mockData';
@@ -22,6 +23,14 @@ export const EmailList = () => {
       setError(null);
       try {
         console.log('Loading emails from Gmail API');
+        // Check if the token is actually a Gmail token with the right scopes
+        const tokenPayload = parseJwt(token);
+        console.log('Token scopes:', tokenPayload?.scope);
+        
+        if (!tokenPayload?.scope || !tokenPayload.scope.includes('https://www.googleapis.com/auth/gmail')) {
+          throw new Error("Gmail API access not granted. Please authorize with the Gmail scope.");
+        }
+        
         const gmailEmails = await fetchEmails(token);
         
         // If we successfully got Gmail emails, use those
@@ -39,12 +48,23 @@ export const EmailList = () => {
         }
       } catch (error: any) {
         console.error('Failed to fetch emails:', error);
-        setError(error.message || "Error connecting to emails");
-        toast({
-          title: "Couldn't load emails",
-          description: "There was a problem connecting to your email. Using sample data instead.",
-          variant: "destructive",
-        });
+        
+        // Check for specific error types
+        if (error.message?.includes('Gmail API access not granted')) {
+          setError("Gmail access not authorized. You need to allow access to your emails.");
+          toast({
+            title: "Gmail access required",
+            description: "Please log out and log in again, allowing access to your Gmail account.",
+            variant: "destructive",
+          });
+        } else {
+          setError(error.message || "Error connecting to emails");
+          toast({
+            title: "Couldn't load emails",
+            description: "There was a problem connecting to your email. Using sample data instead.",
+            variant: "destructive",
+          });
+        }
         
         // Fall back to mock data on error
         setEmails(mockEmails);
@@ -55,6 +75,27 @@ export const EmailList = () => {
       // No token, use mock data
       console.log('No auth token, using mock data');
       setEmails(mockEmails);
+    }
+  };
+  
+  // Helper function to parse JWT token
+  const parseJwt = (token: string) => {
+    try {
+      // For Google OAuth tokens, we need special handling as they're not standard JWTs
+      // This is a simple check to see if we're dealing with a standard JWT or a Google OAuth token
+      if (token.includes('.')) {
+        // Standard JWT format
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(window.atob(base64));
+      } else {
+        // Not a standard JWT format, might be an OAuth access token
+        console.log('Token is not in standard JWT format');
+        return null;
+      }
+    } catch (e) {
+      console.error('Failed to parse token:', e);
+      return null;
     }
   };
   
