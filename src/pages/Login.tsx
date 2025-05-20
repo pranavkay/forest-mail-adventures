@@ -118,13 +118,21 @@ const Login = () => {
     });
   };
   
-  // Use the useGoogleLogin hook to request Gmail scopes
+  // Get the current origin for the redirect URI
+  const origin = window.location.origin;
+  const redirectUri = `${origin}/login`;
+  
+  console.log("Using redirect URI:", redirectUri);
+  
+  // Use the useGoogleLogin hook with updated configuration
   const googleLogin = useGoogleLogin({
     onSuccess: handleGoogleSuccess,
     onError: handleGoogleError,
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
     flow: 'implicit',
-    // Removed ux_mode as it's not supported in implicit flow
+    redirect_uri: redirectUri,
+    select_account: true,
+    auto_select: false,
   });
 
   return (
