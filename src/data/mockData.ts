@@ -3,11 +3,11 @@ import { Contact, Email } from '@/types/email';
 
 // Mock folders data
 export const folders = [
-  { id: 'inbox', name: 'Inbox', icon: 'leaf', count: 3 },
-  { id: 'sent', name: 'Sent Butterflies', icon: 'bird', count: 5 },
-  { id: 'drafts', name: 'Drafts', icon: 'book', count: 0 },
-  { id: 'archive', name: 'Archive', icon: 'archive', count: 0 },
-  { id: 'trash', name: 'Trash', icon: 'trash-2', count: 0 },
+  { id: 'inbox', name: 'Treehouse Deliveries', icon: 'leaf', count: 7 },
+  { id: 'sent', name: 'Sent Butterflies', icon: 'bird', count: 0 },
+  { id: 'drafts', name: 'Acorn Sketches', icon: 'folder-tree', count: 2 },
+  { id: 'archive', name: 'Hollow Logs', icon: 'archive', count: 4 },
+  { id: 'trash', name: 'Compost Heap', icon: 'trash-2', count: 0 },
 ];
 
 // Mock contacts data
