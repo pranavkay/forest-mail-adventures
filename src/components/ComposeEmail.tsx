@@ -3,27 +3,67 @@ import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { contacts } from '@/data/mockData';
+import { sendEmail } from '@/services/gmailService';
+import { useUser } from '@/context/UserContext';
+import { toast } from '@/hooks/use-toast';
 
 export const ComposeEmail = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [recipient, setRecipient] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const { token } = useUser();
   
-  const handleSend = () => {
-    console.log('Sending email:', { recipient, subject, message });
-    // Here we would handle the actual sending logic
-    
-    // Reset form and close compose window
-    setRecipient('');
-    setSubject('');
-    setMessage('');
-    setIsOpen(false);
+  const handleSend = async () => {
+    if (!token) {
+      toast({
+        title: "Not authenticated",
+        description: "Please log in to send emails",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      
+      const emailToSend = {
+        to: recipient,
+        subject,
+        body: message,
+        from: 'me'  // 'me' is a special identifier in Gmail API that refers to the authenticated user
+      };
+      
+      await sendEmail(token, emailToSend);
+      
+      toast({
+        title: "Message sent!",
+        description: "Your message butterfly has been released into the forest.",
+      });
+      
+      // Reset form and close compose window
+      setRecipient('');
+      setSubject('');
+      setMessage('');
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Failed to send email:', error);
+      toast({
+        title: "Failed to send",
+        description: "Your message butterfly couldn't take flight. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
   
   const handleSaveDraft = () => {
-    console.log('Saving draft:', { recipient, subject, message });
-    // Here we would handle saving to drafts
+    toast({
+      title: "Draft saved",
+      description: "Your message is safely stored in your mushroom pocket.",
+    });
     setIsOpen(false);
   };
   
@@ -58,18 +98,13 @@ export const ComposeEmail = () => {
                 <label className="block text-sm font-medium text-forest-bark mb-1">
                   To:
                 </label>
-                <select
+                <input
+                  type="email"
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
+                  placeholder="Enter email address"
                   className="forest-input w-full"
-                >
-                  <option value="">Choose a woodland friend</option>
-                  {contacts.map(contact => (
-                    <option key={contact.id} value={contact.email}>
-                      {contact.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               
               <div>
@@ -110,14 +145,23 @@ export const ComposeEmail = () => {
               </div>
               <button 
                 onClick={handleSend}
-                disabled={!recipient || !subject || !message}
+                disabled={isSending || !recipient || !subject || !message}
                 className={cn(
                   "forest-btn-primary flex items-center",
-                  (!recipient || !subject || !message) && "opacity-50 cursor-not-allowed"
+                  (isSending || !recipient || !subject || !message) && "opacity-50 cursor-not-allowed"
                 )}
               >
-                <span>Release your message butterfly</span>
-                <ArrowRight className="ml-2 w-4 h-4" />
+                {isSending ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-t-white border-forest-leaf/30 rounded-full animate-spin mr-2"></span>
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Release your message butterfly</span>
+                    <ArrowRight className="ml-2 w-4 h-4" />
+                  </>
+                )}
               </button>
             </div>
           </div>
