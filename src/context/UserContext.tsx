@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,6 +9,7 @@ interface UserContextType {
   login: (token: string) => void;
   logout: () => void;
   hasGmailPermissions: () => boolean;
+  getAccessToken: () => string | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -24,11 +26,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       try {
         // Try to parse the token as a JSON object
         const parsed = JSON.parse(token);
+        console.log('Successfully parsed token as JSON object');
         setTokenObject(parsed);
         setIsAuthenticated(true);
       } catch (e) {
         // If it's not a JSON object, it might be a JWT or another format
-        // Keep it as is but still set authenticated to true
+        console.log('Failed to parse token as JSON, using as raw token');
         setTokenObject(null);
         setIsAuthenticated(true);
       }
@@ -39,6 +42,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, [token]);
 
   const login = (newToken: string) => {
+    console.log('Saving new token to localStorage');
     localStorage.setItem('gmail_token', newToken);
     setToken(newToken);
     setIsAuthenticated(true);
@@ -46,11 +50,28 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     // Clear all localStorage data to ensure a fresh start
+    console.log('Clearing all localStorage data for logout');
     localStorage.clear();
     setToken(null);
     setTokenObject(null);
     setIsAuthenticated(false);
     navigate('/login');
+  };
+  
+  // Get the raw access token for API calls
+  const getAccessToken = (): string | null => {
+    // First check if we have a direct access token
+    const directAccessToken = localStorage.getItem('gmail_access_token');
+    if (directAccessToken) {
+      return directAccessToken;
+    }
+    
+    // Then try to extract from the composite token
+    if (tokenObject && tokenObject.access_token) {
+      return tokenObject.access_token;
+    }
+    
+    return null;
   };
   
   // Helper function to check if token has Gmail permissions
@@ -76,7 +97,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       tokenObject,
       login, 
       logout,
-      hasGmailPermissions
+      hasGmailPermissions,
+      getAccessToken
     }}>
       {children}
     </UserContext.Provider>

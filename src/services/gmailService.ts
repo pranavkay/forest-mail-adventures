@@ -24,6 +24,23 @@ interface GmailEmail {
   internalDate: string;
 }
 
+// Helper function to extract the access token from stored token
+const extractAccessToken = (token: string): string => {
+  console.log('Extracting access token from:', token.substring(0, 10) + '...');
+  try {
+    // Try parsing as JSON first (for our composite token)
+    const parsedToken = JSON.parse(token);
+    if (parsedToken && parsedToken.access_token) {
+      console.log('Access token extracted from composite token');
+      return parsedToken.access_token;
+    }
+  } catch (e) {
+    // If parsing fails, the token might already be a raw access token
+    console.log('Token is not in JSON format, using as raw access token');
+  }
+  return token; // Return as is if it's already a raw token
+};
+
 // Fetch emails from Gmail API
 export const fetchEmails = async (token: string): Promise<Email[]> => {
   if (!token) {
@@ -32,12 +49,14 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
   }
 
   try {
-    console.log('Fetching emails from Gmail API with token:', token.substring(0, 10) + '...');
+    // Extract access token from stored token
+    const accessToken = extractAccessToken(token);
+    console.log('Using access token for Gmail API:', accessToken.substring(0, 10) + '...');
     
     // Get list of emails from Gmail API
     const response = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX', {
       headers: {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${accessToken}`
       }
     });
 
@@ -78,7 +97,7 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
     const emailDetailsPromises = data.messages.map(async (message: { id: string }) => {
       const detailResponse = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${accessToken}`
         }
       });
       
@@ -107,6 +126,10 @@ export const sendEmail = async (token: string, email: any): Promise<boolean> => 
   }
 
   try {
+    // Extract access token from stored token
+    const accessToken = extractAccessToken(token);
+    console.log('Using access token for sending email:', accessToken.substring(0, 10) + '...');
+
     // Create the email in RFC 2822 format
     const emailContent = [
       `From: ${email.from}`,
@@ -128,7 +151,7 @@ export const sendEmail = async (token: string, email: any): Promise<boolean> => 
     const response = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({

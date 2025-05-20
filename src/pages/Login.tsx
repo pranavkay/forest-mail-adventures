@@ -30,7 +30,7 @@ const Login = () => {
     console.log('Google login successful:', tokenResponse);
     
     if (tokenResponse.access_token) {
-      // Save the token and credentials
+      // Save the raw access token for API calls
       localStorage.setItem('gmail_access_token', tokenResponse.access_token);
       
       // Get user info to create a more complete token object
@@ -51,6 +51,10 @@ const Login = () => {
             user_info: userInfo
           });
           
+          // Save the composite token for our application use
+          localStorage.setItem('gmail_token', compositeToken);
+          
+          // Make sure to login with the composite token
           login(compositeToken);
           
           toast({

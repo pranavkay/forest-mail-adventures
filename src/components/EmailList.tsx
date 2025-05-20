@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { emails as mockEmails, Email } from '@/data/mockData';
@@ -15,110 +14,77 @@ export const EmailList = () => {
   const [emails, setEmails] = useState<Email[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { token, logout } = useUser();
+  const { token, logout, tokenObject } = useUser();
   
   const loadEmails = async () => {
-    if (token) {
-      setIsLoading(true);
-      setError(null);
-      try {
-        console.log('Loading emails from Gmail API');
-        // Check if the token has the required Gmail scopes
-        const tokenPayload = parseJwt(token);
-        const tokenScopes = tokenPayload?.scope?.split(' ') || [];
-        console.log('Token scopes:', tokenScopes);
-        
-        // Check for required Gmail scopes
-        const hasReadScope = tokenScopes.includes('https://www.googleapis.com/auth/gmail.readonly');
-        const hasSendScope = tokenScopes.includes('https://www.googleapis.com/auth/gmail.send');
-        
-        if (!hasReadScope || !hasSendScope) {
-          console.error('Missing required Gmail scopes');
-          const missingScopes = [];
-          if (!hasReadScope) missingScopes.push('read emails');
-          if (!hasSendScope) missingScopes.push('send emails');
-          
-          throw new Error(`Gmail permissions missing: ${missingScopes.join(' and ')}. Please log out and sign in again.`);
-        }
-        
-        const gmailEmails = await fetchEmails(token);
-        
-        if (gmailEmails && gmailEmails.length > 0) {
-          console.log(`Loaded ${gmailEmails.length} emails from Gmail`);
-          setEmails(gmailEmails);
-          toast({
-            title: "Emails loaded successfully",
-            description: `Retrieved ${gmailEmails.length} emails from your account.`,
-          });
-        } else {
-          console.log('No Gmail emails found, using mock data');
-          setEmails(mockEmails);
-          toast({
-            title: "No emails found",
-            description: "We couldn't find any emails in your account. Showing sample data instead.",
-          });
-        }
-      } catch (error: any) {
-        console.error('Failed to fetch emails:', error);
-        
-        // Check for specific error types
-        if (error.message?.includes('Gmail permissions missing')) {
-          setError(error.message);
-          toast({
-            title: "Gmail permissions required",
-            description: "Please log out and log in again, making sure to approve all permission requests.",
-            variant: "destructive",
-          });
-        } else if (error.message?.includes('Authentication failed')) {
-          setError("Authentication failed. Please log in again.");
-          toast({
-            title: "Session expired",
-            description: "Your login session has expired. Please log in again.",
-            variant: "destructive",
-          });
-          
-          // Automatically log out after a delay
-          setTimeout(() => {
-            logout();
-          }, 3000);
-        } else {
-          setError(error.message || "Error connecting to emails");
-          toast({
-            title: "Couldn't load emails",
-            description: "There was a problem connecting to your email. Using sample data instead.",
-            variant: "destructive",
-          });
-        }
-        
-        // Fall back to mock data on error
-        setEmails(mockEmails);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      // No token, use mock data
-      console.log('No auth token, using mock data');
+    if (!token) {
+      console.log('No auth token available, using mock data');
       setEmails(mockEmails);
+      return;
     }
-  };
-  
-  // Helper function to parse JWT token
-  const parseJwt = (token: string) => {
+
+    setIsLoading(true);
+    setError(null);
+    
     try {
-      // For Google OAuth tokens, we need special handling as they're not standard JWTs
-      if (token.includes('.')) {
-        // Standard JWT format
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        return JSON.parse(window.atob(base64));
+      console.log('Loading emails from Gmail API');
+      console.log('Token available:', token ? 'Yes' : 'No');
+      console.log('Token object available:', tokenObject ? 'Yes' : 'No');
+
+      // Use token directly - the service will extract the access token
+      const gmailEmails = await fetchEmails(token);
+      
+      if (gmailEmails && gmailEmails.length > 0) {
+        console.log(`Loaded ${gmailEmails.length} emails from Gmail`);
+        setEmails(gmailEmails);
+        toast({
+          title: "Emails loaded successfully",
+          description: `Retrieved ${gmailEmails.length} emails from your account.`,
+        });
       } else {
-        // Not a standard JWT format, might be an OAuth access token
-        console.log('Token is not in standard JWT format');
-        return null;
+        console.log('No Gmail emails found, using mock data');
+        setEmails(mockEmails);
+        toast({
+          title: "No emails found",
+          description: "We couldn't find any emails in your account. Showing sample data instead.",
+        });
       }
-    } catch (e) {
-      console.error('Failed to parse token:', e);
-      return null;
+    } catch (error: any) {
+      console.error('Failed to fetch emails:', error);
+      
+      // Check for specific error types
+      if (error.message?.includes('Gmail permissions missing')) {
+        setError(error.message);
+        toast({
+          title: "Gmail permissions required",
+          description: "Please log out and log in again, making sure to approve all permission requests.",
+          variant: "destructive",
+        });
+      } else if (error.message?.includes('Authentication failed')) {
+        setError("Authentication failed. Please log in again.");
+        toast({
+          title: "Session expired",
+          description: "Your login session has expired. Please log in again.",
+          variant: "destructive",
+        });
+        
+        // Automatically log out after a delay
+        setTimeout(() => {
+          logout();
+        }, 3000);
+      } else {
+        setError(error.message || "Error connecting to emails");
+        toast({
+          title: "Couldn't load emails",
+          description: "There was a problem connecting to your email. Using sample data instead.",
+          variant: "destructive",
+        });
+      }
+      
+      // Fall back to mock data on error
+      setEmails(mockEmails);
+    } finally {
+      setIsLoading(false);
     }
   };
   
