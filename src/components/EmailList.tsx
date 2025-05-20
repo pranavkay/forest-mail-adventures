@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { emails as mockEmails } from '@/data/mockData';
 import { Email } from '@/types/email';
 import { format } from 'date-fns';
 import { fetchEmails } from '@/services/gmailService';
@@ -9,6 +8,15 @@ import { toast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { GmailSetupGuide } from './GmailSetupGuide';
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationEllipsis, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious 
+} from './ui/pagination';
 
 interface EmailListProps {
   folderId?: string;
@@ -25,10 +33,21 @@ export const EmailList = ({ folderId = 'inbox', searchQuery = '' }: EmailListPro
   const { token, logout, tokenObject, getAccessToken } = useUser();
   const [needsPermissions, setNeedsPermissions] = useState(false);
   
-  const loadEmails = async () => {
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalEmails, setTotalEmails] = useState(0);
+  const emailsPerPage = 10;
+  
+  const loadEmails = async (page = 1, force = false) => {
     if (!token) {
       console.log('No auth token available, using mock data');
-      setEmails(mockEmails);
+      setEmails(require('@/data/mockData').emails);
+      return;
+    }
+
+    // If emails are already loaded and we're not forcing a reload, just paginate the existing emails
+    if (emails.length > 0 && !force && page === 1) {
+      console.log('Using already loaded emails');
       return;
     }
 
@@ -37,24 +56,36 @@ export const EmailList = ({ folderId = 'inbox', searchQuery = '' }: EmailListPro
     setNeedsPermissions(false);
     
     try {
-      console.log('Loading emails from Gmail API');
+      console.log(`Loading emails from Gmail API for page ${page}`);
       console.log('Token available:', token ? 'Yes' : 'No');
-      console.log('Token object available:', tokenObject ? 'Yes' : 'No');
-      console.log('Access token available:', getAccessToken() ? 'Yes' : 'No');
-
-      // Use token directly - the service will extract the access token
-      const gmailEmails = await fetchEmails(token);
+      
+      // Pass pagination parameters to the fetchEmails function
+      const gmailEmails = await fetchEmails(token, (page - 1) * emailsPerPage, emailsPerPage);
       
       if (gmailEmails && gmailEmails.length > 0) {
         console.log(`Loaded ${gmailEmails.length} emails from Gmail`);
-        setEmails(gmailEmails);
+        
+        if (page === 1 || force) {
+          setEmails(gmailEmails);
+        } else {
+          // Append new emails to existing ones, avoiding duplicates
+          const existingIds = new Set(emails.map(email => email.id));
+          const uniqueNewEmails = gmailEmails.filter(email => !existingIds.has(email.id));
+          setEmails(prev => [...prev, ...uniqueNewEmails]);
+        }
+        
+        // Set estimated total based on API response (could be implemented in the service)
+        setTotalEmails(Math.max(gmailEmails.length + (page - 1) * emailsPerPage, emails.length));
+        
         toast({
           title: "Emails loaded successfully",
-          description: `Retrieved ${gmailEmails.length} emails from your account.`,
+          description: `Retrieved emails for page ${page}.`,
         });
-      } else {
+      } else if (page === 1) {
         console.log('No Gmail emails found, using mock data');
+        const mockEmails = require('@/data/mockData').emails;
         setEmails(mockEmails);
+        setTotalEmails(mockEmails.length);
         toast({
           title: "No emails found",
           description: "We couldn't find any emails in your account. Showing sample data instead.",
@@ -94,15 +125,18 @@ export const EmailList = ({ folderId = 'inbox', searchQuery = '' }: EmailListPro
       }
       
       // Fall back to mock data on error
+      const mockEmails = require('@/data/mockData').emails;
       setEmails(mockEmails);
+      setTotalEmails(mockEmails.length);
     } finally {
       setIsLoading(false);
     }
   };
   
+  // Load emails when the token or page changes
   useEffect(() => {
-    loadEmails();
-  }, [token]);
+    loadEmails(currentPage);
+  }, [token, currentPage]);
   
   // Filter emails whenever folder, search query, or emails change
   useEffect(() => {
@@ -142,7 +176,51 @@ export const EmailList = ({ folderId = 'inbox', searchQuery = '' }: EmailListPro
   };
   
   const handleRetry = () => {
-    loadEmails();
+    loadEmails(1, true);
+  };
+  
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+  
+  // Calculate total pages
+  const totalPages = Math.ceil(totalEmails / emailsPerPage);
+  
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxPagesToShow = 5;
+    
+    if (totalPages <= maxPagesToShow) {
+      // If we have 5 or fewer pages, show all of them
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+      
+      // Calculate middle pages to show
+      if (currentPage <= 3) {
+        // Near the beginning
+        pages.push(2, 3);
+        pages.push(0); // Placeholder for ellipsis
+      } else if (currentPage >= totalPages - 2) {
+        // Near the end
+        pages.push(0); // Placeholder for ellipsis
+        pages.push(totalPages - 2, totalPages - 1);
+      } else {
+        // Somewhere in the middle
+        pages.push(0); // Placeholder for ellipsis
+        pages.push(currentPage - 1, currentPage, currentPage + 1);
+        pages.push(0); // Placeholder for ellipsis
+      }
+      
+      // Always show last page
+      pages.push(totalPages);
+    }
+    
+    return pages;
   };
   
   return (
@@ -161,7 +239,7 @@ export const EmailList = ({ folderId = 'inbox', searchQuery = '' }: EmailListPro
             <p className="text-sm text-forest-bark/70 mb-4">
               {searchQuery 
                 ? `Searched for "${searchQuery}" - ${filteredEmails.length} results` 
-                : 'Your recent messages from the forest'
+                : `Page ${currentPage} of your forest messages`
               }
             </p>
             
@@ -209,6 +287,50 @@ export const EmailList = ({ folderId = 'inbox', searchQuery = '' }: EmailListPro
             {filteredEmails.length === 0 && !isLoading && (
               <div className="text-center py-8 text-forest-bark/70">
                 No messages found in this part of the forest
+              </div>
+            )}
+            
+            {!isLoading && totalPages > 1 && (
+              <div className="mt-6 pt-3 border-t border-forest-moss/30">
+                <Pagination>
+                  <PaginationContent>
+                    {currentPage > 1 && (
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => handlePageChange(currentPage - 1)} 
+                          className="cursor-pointer"
+                        />
+                      </PaginationItem>
+                    )}
+                    
+                    {getPageNumbers().map((page, index) => 
+                      page === 0 ? (
+                        <PaginationItem key={`ellipsis-${index}`}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      ) : (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            isActive={page === currentPage}
+                            onClick={() => handlePageChange(page)}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )
+                    )}
+                    
+                    {currentPage < totalPages && (
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          className="cursor-pointer" 
+                        />
+                      </PaginationItem>
+                    )}
+                  </PaginationContent>
+                </Pagination>
               </div>
             )}
           </div>

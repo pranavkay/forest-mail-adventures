@@ -1,5 +1,5 @@
 // This is a Gmail service implementation using the Google API
-import { Email, Contact } from '@/data/mockData';
+import { Email, Contact } from '@/types/email';
 
 interface GmailEmail {
   id: string;
@@ -56,9 +56,10 @@ const getAccessToken = (): string | null => {
   return null;
 }
 
-// Fetch emails from Gmail API
-export const fetchEmails = async (token: string): Promise<Email[]> => {
+// Fetch emails from Gmail API with pagination support
+export const fetchEmails = async (token: string, startIndex = 0, maxResults = 10): Promise<Email[]> => {
   console.log('fetchEmails called with token type:', typeof token);
+  console.log(`Fetching emails with pagination: startIndex=${startIndex}, maxResults=${maxResults}`);
   
   // Get the access token regardless of what was passed in
   const accessToken = getAccessToken();
@@ -91,8 +92,8 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
       throw new Error('Authentication failed - please login again');
     }
     
-    // Get list of emails from Gmail API - we'll fetch both inbox and sent emails
-    const inboxResponse = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX', {
+    // Get list of emails from Gmail API with pagination parameters
+    const inboxResponse = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}&startIndex=${startIndex}&labelIds=INBOX`, {
       headers: {
         Authorization: `Bearer ${accessToken}`
       }
@@ -126,8 +127,8 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
     const inboxData = await inboxResponse.json();
     console.log('Gmail API inbox response received:', inboxData);
     
-    // Also fetch sent emails
-    const sentResponse = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=SENT', {
+    // Also fetch sent emails with the same pagination
+    const sentResponse = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}&startIndex=${startIndex}&labelIds=SENT`, {
       headers: {
         Authorization: `Bearer ${accessToken}`
       }
