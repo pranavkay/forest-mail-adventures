@@ -10,6 +10,9 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useUser();
+  
+  // Get current URL for redirect
+  const currentUrl = window.location.origin;
 
   // Clear any previous login data on component mount
   useEffect(() => {
@@ -99,12 +102,13 @@ const Login = () => {
     });
   };
   
-  // Use the useGoogleLogin hook to request Gmail scopes
+  // Update to use explicit redirect_uri approach
   const googleLogin = useGoogleLogin({
     onSuccess: handleGoogleSuccess,
     onError: handleGoogleError,
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
     flow: 'implicit',
+    ux_mode: 'popup', // Changed from implicit flow to popup mode
   });
 
   return (

@@ -1,16 +1,15 @@
 
 import { useUser } from '@/context/UserContext';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle, LogOut } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 export const GmailSetupGuide = () => {
-  const { logout } = useUser();
+  const { clearAuthAndLogout } = useUser();
   
   const handleLogout = () => {
-    // Clear any localStorage data before logout
-    localStorage.clear();
-    logout();
+    // Use the new function that handles token revocation
+    clearAuthAndLogout();
   };
   
   return (
@@ -57,6 +56,7 @@ export const GmailSetupGuide = () => {
               variant="destructive"
               className="flex items-center gap-2"
             >
+              <LogOut className="h-4 w-4" />
               Log out and try again
             </Button>
             
