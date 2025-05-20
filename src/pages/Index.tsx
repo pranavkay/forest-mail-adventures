@@ -10,7 +10,7 @@ import { useUser } from '@/context/UserContext';
 const Index = () => {
   const [activeGuide, setActiveGuide] = useState('new-email');
   const { token } = useUser();
-  const [showSetupGuide, setShowSetupGuide] = useState(true); // Always show the guide until properly configured
+  const [showSetupGuide, setShowSetupGuide] = useState(false);
   
   useEffect(() => {
     const guideOrder = ['new-email', 'folders', 'search'];
@@ -24,19 +24,28 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
   
-  // Check if token exists but doesn't have Gmail scope
+  // Check if token exists and validate if it has Gmail scopes
   useEffect(() => {
     if (token) {
       try {
-        // Simple check to determine if we're dealing with a Google OAuth token
+        // Check if it's a Google token
         const isGoogleToken = token.includes('ya29.') || (token.includes('.') && JSON.parse(atob(token.split('.')[1])).iss === 'https://accounts.google.com');
         
         if (isGoogleToken) {
-          // Always show setup guide until properly configured
-          setShowSetupGuide(true);
+          // Check for required Gmail scopes
+          const tokenPayload = token.includes('.') ? JSON.parse(atob(token.split('.')[1])) : null;
+          const tokenScopes = tokenPayload?.scope?.split(' ') || [];
+          
+          const hasReadScope = tokenScopes.includes('https://www.googleapis.com/auth/gmail.readonly');
+          const hasSendScope = tokenScopes.includes('https://www.googleapis.com/auth/gmail.send');
+          
+          // Show setup guide if required scopes are missing
+          setShowSetupGuide(!hasReadScope || !hasSendScope);
         }
       } catch (e) {
         console.error('Error checking token:', e);
+        // If we can't parse the token, show the setup guide just in case
+        setShowSetupGuide(true);
       }
     }
   }, [token]);

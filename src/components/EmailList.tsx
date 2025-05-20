@@ -15,7 +15,7 @@ export const EmailList = () => {
   const [emails, setEmails] = useState<Email[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { token } = useUser();
+  const { token, logout } = useUser();
   
   const loadEmails = async () => {
     if (token) {
@@ -23,21 +23,33 @@ export const EmailList = () => {
       setError(null);
       try {
         console.log('Loading emails from Gmail API');
-        // Check if the token is actually a Gmail token with the right scopes
+        // Check if the token has the required Gmail scopes
         const tokenPayload = parseJwt(token);
-        console.log('Token scopes:', tokenPayload?.scope);
+        const tokenScopes = tokenPayload?.scope?.split(' ') || [];
+        console.log('Token scopes:', tokenScopes);
         
-        if (!tokenPayload?.scope || !tokenPayload.scope.includes('https://www.googleapis.com/auth/gmail')) {
-          throw new Error("Gmail API access not granted. Please authorize with the Gmail scope.");
+        // Check for required Gmail scopes
+        const hasReadScope = tokenScopes.includes('https://www.googleapis.com/auth/gmail.readonly');
+        const hasSendScope = tokenScopes.includes('https://www.googleapis.com/auth/gmail.send');
+        
+        if (!hasReadScope || !hasSendScope) {
+          console.error('Missing required Gmail scopes');
+          const missingScopes = [];
+          if (!hasReadScope) missingScopes.push('read emails');
+          if (!hasSendScope) missingScopes.push('send emails');
+          
+          throw new Error(`Gmail permissions missing: ${missingScopes.join(' and ')}. Please log out and sign in again.`);
         }
         
         const gmailEmails = await fetchEmails(token);
         
-        // If we successfully got Gmail emails, use those
-        // Otherwise, fall back to mock data
         if (gmailEmails && gmailEmails.length > 0) {
           console.log(`Loaded ${gmailEmails.length} emails from Gmail`);
           setEmails(gmailEmails);
+          toast({
+            title: "Emails loaded successfully",
+            description: `Retrieved ${gmailEmails.length} emails from your account.`,
+          });
         } else {
           console.log('No Gmail emails found, using mock data');
           setEmails(mockEmails);
@@ -50,13 +62,25 @@ export const EmailList = () => {
         console.error('Failed to fetch emails:', error);
         
         // Check for specific error types
-        if (error.message?.includes('Gmail API access not granted')) {
-          setError("Gmail access not authorized. You need to allow access to your emails.");
+        if (error.message?.includes('Gmail permissions missing')) {
+          setError(error.message);
           toast({
-            title: "Gmail access required",
-            description: "Please log out and log in again, allowing access to your Gmail account.",
+            title: "Gmail permissions required",
+            description: "Please log out and log in again, making sure to approve all permission requests.",
             variant: "destructive",
           });
+        } else if (error.message?.includes('Authentication failed')) {
+          setError("Authentication failed. Please log in again.");
+          toast({
+            title: "Session expired",
+            description: "Your login session has expired. Please log in again.",
+            variant: "destructive",
+          });
+          
+          // Automatically log out after a delay
+          setTimeout(() => {
+            logout();
+          }, 3000);
         } else {
           setError(error.message || "Error connecting to emails");
           toast({
@@ -82,7 +106,6 @@ export const EmailList = () => {
   const parseJwt = (token: string) => {
     try {
       // For Google OAuth tokens, we need special handling as they're not standard JWTs
-      // This is a simple check to see if we're dealing with a standard JWT or a Google OAuth token
       if (token.includes('.')) {
         // Standard JWT format
         const base64Url = token.split('.')[1];
@@ -131,12 +154,22 @@ export const EmailList = () => {
                 <AlertTitle>Connection Error</AlertTitle>
                 <AlertDescription className="flex justify-between items-center">
                   <span>{error}</span>
-                  <button 
-                    onClick={handleRetry} 
-                    className="bg-destructive/10 hover:bg-destructive/20 px-3 py-1 rounded flex items-center gap-2"
-                  >
-                    <ReloadIcon className="h-4 w-4" /> Retry
-                  </button>
+                  <div className="flex gap-2">
+                    {error.includes('Gmail permissions') && (
+                      <button 
+                        onClick={logout} 
+                        className="bg-destructive/10 hover:bg-destructive/20 px-3 py-1 rounded flex items-center gap-2"
+                      >
+                        Log out
+                      </button>
+                    )}
+                    <button 
+                      onClick={handleRetry} 
+                      className="bg-destructive/10 hover:bg-destructive/20 px-3 py-1 rounded flex items-center gap-2"
+                    >
+                      <ReloadIcon className="h-4 w-4" /> Retry
+                    </button>
+                  </div>
                 </AlertDescription>
               </Alert>
             )}

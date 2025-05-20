@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { Leaf } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
+import { toast } from '@/hooks/use-toast';
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,11 +22,15 @@ const Login = () => {
   const handleLoginSuccess = (credentialResponse: any) => {
     setIsLoading(true);
     
-    // Store the token
     console.log('Login successful, credential received:', credentialResponse);
     
     if (credentialResponse.credential) {
       login(credentialResponse.credential);
+      
+      toast({
+        title: "Login successful!",
+        description: "Welcome to Forest Mail",
+      });
       
       // Simulate loading email data
       setTimeout(() => {
@@ -35,12 +40,24 @@ const Login = () => {
     } else {
       console.error('No credential received from Google login');
       setIsLoading(false);
+      
+      toast({
+        title: "Login failed",
+        description: "Unable to get login credentials",
+        variant: "destructive"
+      });
     }
   };
 
   const handleLoginError = () => {
     console.error('Gmail login failed');
     setIsLoading(false);
+    
+    toast({
+      title: "Login failed",
+      description: "Please try again or check your Google account",
+      variant: "destructive"
+    });
   };
 
   return (
@@ -53,14 +70,15 @@ const Login = () => {
         </div>
         
         <h1 className="text-2xl font-bold text-forest-bark mb-2">Welcome to Forest Mail</h1>
-        <p className="text-forest-bark/70 mb-4">Connect with your Gmail to enter the woodland</p>
+        <p className="text-forest-bark/70 mb-6">Connect with your Gmail to enter the woodland</p>
         
-        <div className="mb-4 text-sm text-forest-bark/80">
-          <p>For this app to work properly, you'll need to grant permission to:</p>
-          <ul className="list-disc text-left mx-auto max-w-xs mt-2">
+        <div className="mb-6 text-sm text-forest-bark/80 p-4 bg-forest-moss/10 rounded-lg">
+          <p className="font-medium mb-2">🔒 Forest Mail needs permission to:</p>
+          <ul className="list-disc text-left mx-auto max-w-xs space-y-2">
             <li>Read emails from your Gmail account</li>
             <li>Send emails on your behalf</li>
           </ul>
+          <p className="mt-3 text-xs">We only use these permissions to display and send emails through the Forest Mail interface.</p>
         </div>
         
         {isLoading ? (
@@ -78,8 +96,6 @@ const Login = () => {
               size="large"
               text="signin_with"
               useOneTap
-              // Remove the scope prop as it's not supported
-              // The scopes should be configured in the Google Cloud Console
             />
           </div>
         )}
