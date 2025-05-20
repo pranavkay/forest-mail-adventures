@@ -8,12 +8,14 @@ import { AnimalGuide } from '@/components/AnimalGuide';
 import { GmailSetupGuide } from '@/components/GmailSetupGuide';
 import { useUser } from '@/context/UserContext';
 import { toast } from '@/hooks/use-toast';
+import { Menu } from 'lucide-react';
 
 const Index = () => {
   const [activeGuide, setActiveGuide] = useState('new-email');
   const { token, hasGmailPermissions } = useUser();
   const [showSetupGuide, setShowSetupGuide] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSidebar, setShowSidebar] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
@@ -56,6 +58,29 @@ const Index = () => {
     }
   }, [token, hasGmailPermissions]);
   
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const sidebar = document.querySelector('.sidebar-container');
+      const toggleButton = document.querySelector('.sidebar-toggle');
+
+      if (
+        showSidebar &&
+        sidebar &&
+        !sidebar.contains(event.target as Node) &&
+        toggleButton &&
+        !toggleButton.contains(event.target as Node)
+      ) {
+        setShowSidebar(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSidebar]);
+  
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Searching for:', searchQuery);
@@ -81,14 +106,27 @@ const Index = () => {
   };
   
   return (
-    <div className="flex h-screen w-full">
-      <Sidebar />
+    <div className="flex flex-col md:flex-row h-screen w-full overflow-hidden">
+      {/* Mobile sidebar toggle */}
+      <div className="md:hidden fixed top-4 left-4 z-50 sidebar-toggle">
+        <button 
+          onClick={() => setShowSidebar(!showSidebar)}
+          className="p-2 bg-forest-leaf text-white rounded-full shadow-lg"
+        >
+          <Menu size={20} />
+        </button>
+      </div>
       
-      <div className="flex-1 overflow-auto p-6 leaf-bg">
-        <div className="max-w-4xl mx-auto">
+      {/* Sidebar - hidden on mobile by default, shown when toggled */}
+      <div className={`sidebar-container fixed md:relative z-40 transition-transform duration-300 ease-in-out h-screen ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <Sidebar />
+      </div>
+      
+      <div className="flex-1 overflow-auto leaf-bg pt-16 md:pt-0">
+        <div className="max-w-4xl mx-auto px-4 md:px-6">
           <header className="mb-6">
-            <div className="forest-card p-6 mb-4">
-              <h1 className="text-2xl font-bold text-forest-bark mb-2">
+            <div className="forest-card p-4 md:p-6 mb-4">
+              <h1 className="text-xl md:text-2xl font-bold text-forest-bark mb-2">
                 {currentFolder === 'inbox' ? 'Welcome to your Treehouse Deliveries' : 
                  currentFolder === 'sent' ? 'Sent Butterflies' :
                  currentFolder === 'drafts' ? 'Acorn Sketches' :
@@ -96,7 +134,7 @@ const Index = () => {
                  currentFolder === 'trash' ? 'Compost Heap' :
                  `Browsing ${currentFolder.charAt(0).toUpperCase() + currentFolder.slice(1)} Messages`}
               </h1>
-              <p className="text-forest-bark/70">Where your messages flutter and leaves gently fall</p>
+              <p className="text-sm md:text-base text-forest-bark/70">Where your messages flutter and leaves gently fall</p>
             </div>
             
             {showSetupGuide && <GmailSetupGuide />}
@@ -105,7 +143,7 @@ const Index = () => {
               <input 
                 type="text" 
                 placeholder="Search through the forest..." 
-                className="forest-input w-full pl-10"
+                className="forest-input w-full pl-10 text-sm md:text-base"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
