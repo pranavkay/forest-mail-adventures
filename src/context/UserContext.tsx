@@ -31,7 +31,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('gmail_token');
+    // Clear all localStorage data to ensure a fresh start
+    localStorage.clear();
     setToken(null);
     setIsAuthenticated(false);
     navigate('/login');

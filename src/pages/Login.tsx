@@ -11,6 +11,11 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useUser();
 
+  // Clear any previous login data on component mount
+  useEffect(() => {
+    localStorage.removeItem('gmail_token');
+  }, []);
+
   // Check if user is already logged in
   useEffect(() => {
     const token = localStorage.getItem('gmail_token');
@@ -95,7 +100,7 @@ const Login = () => {
               shape="pill"
               size="large"
               text="signin_with"
-              useOneTap
+              useOneTap={false}
             />
           </div>
         )}

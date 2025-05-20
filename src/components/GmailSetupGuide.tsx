@@ -1,13 +1,15 @@
 
 import { useUser } from '@/context/UserContext';
-import { useState } from 'react';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 export const GmailSetupGuide = () => {
   const { logout } = useUser();
   
   const handleLogout = () => {
+    // Clear any localStorage data before logout
+    localStorage.clear();
     logout();
   };
   
@@ -20,7 +22,7 @@ export const GmailSetupGuide = () => {
       <AlertDescription>
         <div className="space-y-3 py-2">
           <p>
-            Forest Mail needs permission to read and send emails with your Gmail account. This allows us to display your emails and send messages through our interface.
+            Forest Mail needs permission to read and send emails with your Gmail account. It appears you didn't grant these permissions during login.
           </p>
           
           <div className="bg-white/50 rounded-lg p-3 space-y-2 text-sm">
@@ -34,17 +36,28 @@ export const GmailSetupGuide = () => {
             </div>
           </div>
           
-          <p className="text-sm">
-            Please log out and sign in again, making sure to allow these permissions when prompted.
-          </p>
+          <div className="bg-white/50 rounded-lg p-3 text-sm border-l-4 border-blue-500">
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 text-blue-500 mt-0.5" />
+              <div>
+                <p className="font-medium text-forest-bark">To fix this issue:</p>
+                <ol className="list-decimal ml-4 mt-1 space-y-1">
+                  <li>Click the button below to log out completely</li>
+                  <li>Sign in again with your Google account</li>
+                  <li>When prompted, make sure to check "Allow" for all requested permissions</li>
+                </ol>
+              </div>
+            </div>
+          </div>
           
           <div className="mt-3">
-            <button 
+            <Button 
               onClick={handleLogout}
-              className="bg-forest-berry hover:bg-forest-berry/90 text-white px-4 py-2 rounded flex items-center gap-2"
+              variant="destructive"
+              className="flex items-center gap-2"
             >
               Log out and try again
-            </button>
+            </Button>
           </div>
         </div>
       </AlertDescription>
