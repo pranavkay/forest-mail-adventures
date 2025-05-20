@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -96,6 +95,26 @@ export const EmailList: React.FC<EmailListProps> = ({
     }
   };
 
+  // Get a random woodland title for contacts
+  const getWoodlandTitle = (email: string) => {
+    const titles = [
+      'Forest Guardian',
+      'Leaf Whisperer',
+      'Woodland Sage',
+      'Mushroom Keeper',
+      'Acorn Collector',
+      'Fern Friend',
+      'Shadow Dancer',
+      'Dew Gatherer',
+      'Moonlight Guide',
+      'Tree Speaker'
+    ];
+    
+    // Use email as a seed for deterministic but random-looking selection
+    const charSum = email.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return titles[charSum % titles.length];
+  };
+
   // Load emails on component mount and when dependencies change
   useEffect(() => {
     console.log('EmailList dependencies changed, reloading emails');
@@ -151,7 +170,7 @@ export const EmailList: React.FC<EmailListProps> = ({
         <p>Please log in to view your emails.</p>
         <button 
           onClick={() => navigate('/login')}
-          className="mt-4 forest-button"
+          className="mt-4 forest-btn-primary"
         >
           Go to Login
         </button>
@@ -195,7 +214,7 @@ export const EmailList: React.FC<EmailListProps> = ({
         </p>
         <button 
           onClick={handleRefresh}
-          className="forest-button inline-flex items-center gap-2"
+          className="forest-btn-primary inline-flex items-center gap-2"
         >
           <RefreshCw className="h-4 w-4" /> Refresh
         </button>
@@ -206,10 +225,11 @@ export const EmailList: React.FC<EmailListProps> = ({
   // Email detail view
   if (selectedEmail) {
     return (
-      <div className="forest-card overflow-hidden">
-        <div className="flex justify-between items-center p-4 border-b border-forest-border">
-          <button onClick={handleCloseEmail} className="font-medium text-forest-accent hover:underline">
-            ← Back to {folderId === 'sent' ? 'Sent Butterflies' : 'Inbox'}
+      <div className="forest-card overflow-hidden backdrop-blur-sm animate-fade-in woodland-shadow">
+        <div className="flex justify-between items-center p-4 border-b border-forest-moss">
+          <button onClick={handleCloseEmail} className="font-medium text-forest-leaf hover:underline flex items-center gap-1">
+            <ChevronLeft className="h-4 w-4" />
+            Back to {folderId === 'sent' ? 'Sent Butterflies' : 'Inbox'}
           </button>
           <div className="text-sm text-forest-bark/70">
             {formatDate(selectedEmail.received)}
@@ -217,14 +237,14 @@ export const EmailList: React.FC<EmailListProps> = ({
         </div>
         
         <div className="p-6">
-          <h2 className="text-2xl font-bold mb-4">{selectedEmail.subject}</h2>
+          <h2 className="text-2xl font-bold mb-4 text-forest-bark">{selectedEmail.subject}</h2>
           
           <div className="flex items-center mb-6">
             <div className="relative">
               <img 
                 src={selectedEmail.from.avatar || '/avatar-fox.png'} 
-                alt={selectedEmail.from.name} 
-                className="w-12 h-12 rounded-full border-2 border-forest-accent"
+                alt={selectedEmail.from.animal || 'fox'} 
+                className="w-12 h-12 rounded-full border-2 border-forest-leaf animate-float"
               />
               <div className="absolute bottom-0 right-0 w-4 h-4 bg-white rounded-full flex items-center justify-center">
                 <span className="text-xs">
@@ -239,15 +259,17 @@ export const EmailList: React.FC<EmailListProps> = ({
               </div>
             </div>
             <div className="ml-4">
-              <div className="font-medium">{selectedEmail.from.name}</div>
+              <div className="font-medium text-forest-berry">
+                {selectedEmail.from.animal ? `${selectedEmail.from.animal.charAt(0).toUpperCase() + selectedEmail.from.animal.slice(1)} of the Woods` : selectedEmail.from.name}
+              </div>
               <div className="text-sm text-forest-bark/70">{selectedEmail.from.email}</div>
-              <div className="text-xs text-forest-bark/50">
-                {selectedEmail.from.woodlandName || 'Forest Dweller'}
+              <div className="text-xs text-forest-leaf font-medium">
+                {selectedEmail.from.woodlandName || getWoodlandTitle(selectedEmail.from.email)}
               </div>
             </div>
           </div>
           
-          <div className="prose max-w-none">
+          <div className="prose max-w-none text-forest-bark/90 bg-forest-cream/50 p-4 rounded-lg border border-forest-moss/30">
             <p>{selectedEmail.body}</p>
           </div>
         </div>
@@ -264,21 +286,25 @@ export const EmailList: React.FC<EmailListProps> = ({
         </div>
         <button 
           onClick={handleRefresh} 
-          className="p-2 text-forest-accent hover:text-forest-bark flex items-center gap-1 rounded-lg hover:bg-forest-bg transition-colors"
+          className="p-2 text-forest-leaf hover:text-forest-bark flex items-center gap-1 rounded-lg hover:bg-forest-moss/30 transition-colors"
         >
           <RefreshCw className="h-4 w-4" />
           <span className="text-sm">Refresh</span>
         </button>
       </div>
 
-      <div className="space-y-2">
-        {emails.map(email => (
+      <div className="space-y-3">
+        {emails.map((email, index) => (
           <div 
             key={email.id}
             onClick={() => handleOpenEmail(email)}
-            className={`forest-card p-4 cursor-pointer transition-all ${
-              !email.read ? 'bg-forest-bg border-l-4 border-l-forest-accent' : ''
+            className={`forest-card p-4 cursor-pointer transition-all hover:woodland-shadow hover:-translate-y-1 animate-pop ${
+              !email.read ? 'bg-forest-moss/40 border-l-4 border-l-forest-leaf' : 'bg-forest-cream/80'
             }`}
+            style={{ 
+              animationDelay: `${index * 0.05}s`,
+              transform: `rotate(${Math.sin(index * 0.5) * 0.5}deg)`
+            }}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -286,10 +312,10 @@ export const EmailList: React.FC<EmailListProps> = ({
                   <img 
                     src={email.from.avatar || '/avatar-fox.png'} 
                     alt={email.from.name} 
-                    className="w-8 h-8 rounded-full"
+                    className={`w-10 h-10 rounded-full border-2 ${!email.read ? 'border-forest-leaf animate-float' : 'border-forest-moss'}`}
                   />
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                    <span className="text-[8px]">
+                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-white rounded-full flex items-center justify-center">
+                    <span className="text-xs">
                       {email.from.animal === 'fox' ? '🦊' :
                        email.from.animal === 'owl' ? '🦉' :
                        email.from.animal === 'rabbit' ? '🐰' :
@@ -301,18 +327,23 @@ export const EmailList: React.FC<EmailListProps> = ({
                   </div>
                 </div>
                 <div>
-                  <div className={`font-medium ${!email.read ? 'font-bold' : ''}`}>{email.from.name}</div>
+                  <div className={`font-medium ${!email.read ? 'font-bold text-forest-bark' : 'text-forest-berry'}`}>
+                    {email.from.animal ? `${email.from.animal.charAt(0).toUpperCase() + email.from.animal.slice(1)} of the Woods` : email.from.name}
+                  </div>
                   <div className="text-xs text-forest-bark/70">{email.from.email}</div>
+                  <div className="text-xs text-forest-leaf">
+                    {email.from.woodlandName || getWoodlandTitle(email.from.email)}
+                  </div>
                 </div>
               </div>
               <div className="text-xs text-forest-bark/70">
                 {formatDate(email.received)}
               </div>
             </div>
-            <div className={`mt-2 ${!email.read ? 'font-semibold' : ''}`}>
+            <div className={`mt-2 ${!email.read ? 'font-semibold text-forest-bark' : 'text-forest-bark/90'}`}>
               {email.subject}
             </div>
-            <div className="mt-1 text-sm text-forest-bark/70 line-clamp-2">
+            <div className="mt-1 text-sm text-forest-bark/70 line-clamp-2 bg-white/40 p-2 rounded-lg">
               {email.body.length > 120 ? `${email.body.substring(0, 120)}...` : email.body}
             </div>
           </div>
@@ -325,7 +356,7 @@ export const EmailList: React.FC<EmailListProps> = ({
           <PaginationItem>
             <PaginationPrevious 
               onClick={() => page > 1 && onPageChange(page - 1)}
-              className={`forest-button-outline ${page === 1 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              className={`forest-btn-outline ${page === 1 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-forest-moss/30'}`}
             />
           </PaginationItem>
           
@@ -333,7 +364,7 @@ export const EmailList: React.FC<EmailListProps> = ({
             <PaginationItem>
               <PaginationLink 
                 onClick={() => onPageChange(page - 1)} 
-                className="cursor-pointer bg-forest-bg text-forest-bark hover:bg-forest-accent/20"
+                className="cursor-pointer bg-forest-moss/30 text-forest-bark hover:bg-forest-moss/50"
               >
                 {page - 1}
               </PaginationLink>
@@ -343,7 +374,7 @@ export const EmailList: React.FC<EmailListProps> = ({
           <PaginationItem>
             <PaginationLink 
               isActive 
-              className="bg-forest-accent text-white hover:bg-forest-accent/80"
+              className="bg-forest-leaf text-white hover:bg-forest-leaf/80"
             >
               {page}
             </PaginationLink>
@@ -353,7 +384,7 @@ export const EmailList: React.FC<EmailListProps> = ({
             <PaginationItem>
               <PaginationLink 
                 onClick={() => onPageChange(page + 1)}
-                className="cursor-pointer bg-forest-bg text-forest-bark hover:bg-forest-accent/20"
+                className="cursor-pointer bg-forest-moss/30 text-forest-bark hover:bg-forest-moss/50"
               >
                 {page + 1}
               </PaginationLink>
@@ -363,7 +394,7 @@ export const EmailList: React.FC<EmailListProps> = ({
           <PaginationItem>
             <PaginationNext 
               onClick={() => emails.length === pageSize && onPageChange(page + 1)}
-              className={`forest-button-outline ${emails.length < pageSize ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              className={`forest-btn-outline ${emails.length < pageSize ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-forest-moss/30'}`}
             />
           </PaginationItem>
         </PaginationContent>
