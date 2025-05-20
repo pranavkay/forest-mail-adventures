@@ -14,7 +14,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 // Replace with your Google Client ID from Google Cloud Console
-const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID";
+  const GOOGLE_CLIENT_ID = "541980333383-47b9k63tve1lfobs9pkltv245gf9ddp5.apps.googleusercontent.com";
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
