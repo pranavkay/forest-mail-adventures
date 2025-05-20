@@ -128,9 +128,8 @@ const Login = () => {
     onSuccess: handleGoogleSuccess,
     onError: handleGoogleError,
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
-    flow: 'implicit',
-    // Using a properly computed redirect URI based on current origin
-    redirect_uri: `${origin}/oauth-callback`
+    flow: 'implicit'
+    // Remove redirect_uri as it's not supported in implicit flow
   });
 
   return (
