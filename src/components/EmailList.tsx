@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { fetchEmails } from '@/data/mockData';
 import { Email } from '@/types/email';
 import { useUser } from '@/context/UserContext';
-import { RefreshCw, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight, Mail, Reply, ReplyAll } from 'lucide-react';
 import { 
   Pagination, 
   PaginationContent, 
@@ -14,6 +14,7 @@ import {
   PaginationPrevious 
 } from "@/components/ui/pagination";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface EmailListProps {
   folderId: string;
@@ -36,6 +37,8 @@ export const EmailList: React.FC<EmailListProps> = ({
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [totalEmails, setTotalEmails] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0); // Used to trigger refresh
+  const [replyMode, setReplyMode] = useState<'reply' | 'replyAll' | null>(null);
+  const [replyText, setReplyText] = useState('');
   const { token } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -151,6 +154,8 @@ export const EmailList: React.FC<EmailListProps> = ({
   // Handle opening an email
   const handleOpenEmail = (email: Email) => {
     setSelectedEmail(email);
+    setReplyMode(null); // Reset reply mode when opening a new email
+    setReplyText(''); // Clear reply text
     
     // Mark as read if not already
     if (!email.read) {
@@ -162,9 +167,41 @@ export const EmailList: React.FC<EmailListProps> = ({
     }
   };
 
+  // Handle reply to the current email
+  const handleReply = (type: 'reply' | 'replyAll') => {
+    setReplyMode(type);
+    
+    // Pre-populate reply with greeting
+    const greeting = `Hello ${selectedEmail?.from.name.split(' ')[0] || 'there'},\n\n`;
+    setReplyText(greeting);
+  };
+
+  // Handle sending a reply
+  const handleSendReply = () => {
+    if (!selectedEmail) return;
+    
+    toast({
+      title: "Reply sent!",
+      description: "Your reply butterfly has fluttered away to the recipient.",
+    });
+    
+    // In a real app, we would send the reply here
+    console.log('Reply to:', selectedEmail.from.email);
+    console.log('Reply text:', replyText);
+    
+    // Close reply mode
+    setReplyMode(null);
+    setReplyText('');
+    
+    // Close email view
+    setSelectedEmail(null);
+  };
+
   // Handle closing the email detail view
   const handleCloseEmail = () => {
     setSelectedEmail(null);
+    setReplyMode(null);
+    setReplyText('');
   };
 
   // Format date to human readable format
@@ -309,11 +346,66 @@ export const EmailList: React.FC<EmailListProps> = ({
             </div>
           </div>
           
-          <Card className="overflow-hidden shadow-md">
+          <Card className="overflow-hidden shadow-md mb-6">
             <CardContent className="prose max-w-none text-forest-bark/90 bg-gradient-to-b from-forest-cream/70 to-white/90 p-6 rounded-lg">
               {formatEmailBody(selectedEmail.body)}
             </CardContent>
           </Card>
+          
+          {!replyMode && (
+            <div className="flex gap-3 mt-6 mb-2">
+              <Button 
+                variant="outline" 
+                className="bg-forest-cream hover:bg-forest-moss/30 border-forest-leaf/20 text-forest-bark flex items-center gap-2"
+                onClick={() => handleReply('reply')}
+              >
+                <Reply size={16} />
+                Reply
+              </Button>
+              <Button 
+                variant="outline" 
+                className="bg-forest-cream hover:bg-forest-moss/30 border-forest-leaf/20 text-forest-bark flex items-center gap-2"
+                onClick={() => handleReply('replyAll')}
+              >
+                <ReplyAll size={16} />
+                Reply All
+              </Button>
+            </div>
+          )}
+          
+          {replyMode && (
+            <div className="mt-6 border-t border-forest-moss/30 pt-4">
+              <div className="mb-2 flex justify-between items-center">
+                <h3 className="font-medium text-forest-bark">
+                  {replyMode === 'reply' ? 'Replying to ' : 'Replying to all recipients including '} 
+                  <span className="text-forest-berry">{selectedEmail.from.name}</span>
+                </h3>
+                <button 
+                  onClick={() => setReplyMode(null)}
+                  className="text-forest-bark/60 hover:text-forest-bark text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+              
+              <textarea 
+                className="w-full h-40 p-4 rounded-lg border border-forest-moss/30 bg-white/80 focus:outline-none focus:ring-2 focus:ring-forest-leaf shadow-inner"
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder="Write your reply here..."
+              ></textarea>
+              
+              <div className="flex justify-end mt-4">
+                <Button 
+                  className="bg-forest-leaf hover:bg-forest-leaf/80 text-white"
+                  onClick={handleSendReply}
+                  disabled={!replyText.trim()}
+                >
+                  Send Reply
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
