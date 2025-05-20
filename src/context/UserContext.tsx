@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,7 +8,6 @@ interface UserContextType {
   login: (token: string) => void;
   logout: () => void;
   hasGmailPermissions: () => boolean;
-  clearAuthAndLogout: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -46,25 +44,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(true);
   };
 
-  const clearAuthAndLogout = () => {
-    // Handle Google logout first
-    const tokenObj = token ? JSON.parse(token) : null;
-    const accessToken = tokenObj?.access_token;
-    
-    if (accessToken) {
-      // Attempt to revoke the token
-      fetch(`https://oauth2.googleapis.com/revoke?token=${accessToken}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      }).catch(e => console.error('Error revoking token:', e));
-    }
-    
-    // Then proceed with local logout
-    logout();
-  };
-
   const logout = () => {
     // Clear all localStorage data to ensure a fresh start
     localStorage.clear();
@@ -97,8 +76,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       tokenObject,
       login, 
       logout,
-      hasGmailPermissions,
-      clearAuthAndLogout
+      hasGmailPermissions
     }}>
       {children}
     </UserContext.Provider>
