@@ -13,11 +13,11 @@ export const GmailSetupGuide = () => {
   
   return (
     <Alert className="mb-6">
-      <AlertTitle className="font-semibold">Gmail Setup Required</AlertTitle>
+      <AlertTitle className="font-semibold">Gmail API Setup Required</AlertTitle>
       <AlertDescription>
         <div className="space-y-2">
           <p className="text-sm">
-            To connect your Gmail account properly, you need to ensure your Google OAuth consent screen has the correct scopes enabled:
+            To connect your Gmail account properly, you need to configure your Google OAuth consent screen and API access:
           </p>
           
           {isExpanded ? (
@@ -32,7 +32,10 @@ export const GmailSetupGuide = () => {
                     <li>https://www.googleapis.com/auth/gmail.send (for sending emails)</li>
                   </ul>
                 </li>
-                <li>After updating scopes, users will need to authorize again with the new permissions</li>
+                <li>Then go to "APIs & Services" > "Library" and enable the Gmail API</li>
+                <li>Finally, go to "Credentials" and create OAuth 2.0 Client IDs for your app</li>
+                <li>Update your client ID in your app configuration</li>
+                <li>After updating everything, users will need to authorize again with the new permissions</li>
               </ol>
               
               <div className="flex space-x-3 mt-4">

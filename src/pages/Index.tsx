@@ -10,7 +10,7 @@ import { useUser } from '@/context/UserContext';
 const Index = () => {
   const [activeGuide, setActiveGuide] = useState('new-email');
   const { token } = useUser();
-  const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [showSetupGuide, setShowSetupGuide] = useState(true); // Changed to true to always display the guide during development
   
   useEffect(() => {
     const guideOrder = ['new-email', 'folders', 'search'];
@@ -32,7 +32,7 @@ const Index = () => {
         const isGoogleToken = token.includes('ya29.') || (token.includes('.') && JSON.parse(atob(token.split('.')[1])).iss === 'https://accounts.google.com');
         
         if (isGoogleToken) {
-          // This is a very basic check - in a production app, we would validate the token properly
+          // Always show setup guide during development
           setShowSetupGuide(true);
         }
       } catch (e) {

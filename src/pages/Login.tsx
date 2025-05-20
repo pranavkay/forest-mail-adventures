@@ -78,7 +78,8 @@ const Login = () => {
               size="large"
               text="signin_with"
               useOneTap
-              scope="https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send"
+              // Remove the scope prop as it's not supported
+              // The scopes should be configured in the Google Cloud Console
             />
           </div>
         )}
