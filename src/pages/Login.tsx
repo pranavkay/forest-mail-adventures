@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
@@ -117,17 +118,19 @@ const Login = () => {
     });
   };
   
-  // Log the current origin for debugging
+  // Get current origin for proper OAuth redirect
   const origin = window.location.origin;
-  console.log("Current origin:", origin);
+  console.log("Current origin for OAuth:", origin);
   
   // Use the useGoogleLogin hook with proper configuration for implicit flow
+  // This will ensure it works across different deployment environments
   const googleLogin = useGoogleLogin({
     onSuccess: handleGoogleSuccess,
     onError: handleGoogleError,
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
     flow: 'implicit',
-    // Removing the select_account and auto_select properties as they're not supported in the implicit flow type
+    // Using a properly computed redirect URI based on current origin
+    redirect_uri: `${origin}/oauth-callback`
   });
 
   return (

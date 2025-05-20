@@ -67,6 +67,9 @@ html, body {
   overflow-x: hidden;
   position: relative;
   width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 /* Improve touch targets on mobile */
@@ -92,4 +95,47 @@ input[type="submit"] {
 /* Fix for mobile sidebar */
 .sidebar-mobile-open {
   overflow: hidden;
+}
+
+/* Fix content flicker during loading */
+.loading-transition {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.loading-transition.loaded {
+  opacity: 1;
+}
+
+/* Optimize for different screen sizes */
+@media (max-width: 480px) {
+  .mobile-text-sm {
+    font-size: 0.875rem;
+  }
+  
+  .mobile-p-sm {
+    padding: 0.5rem;
+  }
+}
+
+/* Print styles for emails and documents */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  body {
+    background: white;
+    font-size: 12pt;
+  }
+  
+  .email-content {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
 }
