@@ -118,19 +118,16 @@ const Login = () => {
     });
   };
   
-  // Get the current origin for the redirect URI
+  // Log the current origin for debugging
   const origin = window.location.origin;
-  const redirectUri = `${origin}/login`;
+  console.log("Current origin:", origin);
   
-  console.log("Using redirect URI:", redirectUri);
-  
-  // Use the useGoogleLogin hook with updated configuration
+  // Use the useGoogleLogin hook with proper configuration for implicit flow
   const googleLogin = useGoogleLogin({
     onSuccess: handleGoogleSuccess,
     onError: handleGoogleError,
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
     flow: 'implicit',
-    redirect_uri: redirectUri,
     select_account: true,
     auto_select: false,
   });
