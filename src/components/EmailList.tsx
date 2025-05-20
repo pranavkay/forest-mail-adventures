@@ -7,6 +7,7 @@ import { useUser } from '@/context/UserContext';
 import { toast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ReloadIcon } from "@radix-ui/react-icons";
+import { GmailSetupGuide } from './GmailSetupGuide';
 
 export const EmailList = () => {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
@@ -14,7 +15,8 @@ export const EmailList = () => {
   const [emails, setEmails] = useState<Email[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { token, logout, tokenObject } = useUser();
+  const { token, logout, tokenObject, getAccessToken } = useUser();
+  const [needsPermissions, setNeedsPermissions] = useState(false);
   
   const loadEmails = async () => {
     if (!token) {
@@ -25,11 +27,13 @@ export const EmailList = () => {
 
     setIsLoading(true);
     setError(null);
+    setNeedsPermissions(false);
     
     try {
       console.log('Loading emails from Gmail API');
       console.log('Token available:', token ? 'Yes' : 'No');
       console.log('Token object available:', tokenObject ? 'Yes' : 'No');
+      console.log('Access token available:', getAccessToken() ? 'Yes' : 'No');
 
       // Use token directly - the service will extract the access token
       const gmailEmails = await fetchEmails(token);
@@ -53,8 +57,9 @@ export const EmailList = () => {
       console.error('Failed to fetch emails:', error);
       
       // Check for specific error types
-      if (error.message?.includes('Gmail permissions missing')) {
+      if (error.message?.includes('Permission denied') || error.message?.includes('Gmail permissions')) {
         setError(error.message);
+        setNeedsPermissions(true);
         toast({
           title: "Gmail permissions required",
           description: "Please log out and log in again, making sure to approve all permission requests.",
@@ -111,17 +116,19 @@ export const EmailList = () => {
     <div className="w-full">
       {!isEmailOpen ? (
         <div className="space-y-4">
+          {needsPermissions && <GmailSetupGuide />}
+        
           <div className="forest-card">
             <h2 className="text-xl font-semibold text-forest-bark mb-1">Leaf Pile</h2>
             <p className="text-sm text-forest-bark/70 mb-4">Your recent messages from the forest</p>
             
-            {error && (
+            {error && !needsPermissions && (
               <Alert variant="destructive" className="mb-4">
                 <AlertTitle>Connection Error</AlertTitle>
                 <AlertDescription className="flex justify-between items-center">
                   <span>{error}</span>
                   <div className="flex gap-2">
-                    {error.includes('Gmail permissions') && (
+                    {error.includes('Authentication failed') && (
                       <button 
                         onClick={logout} 
                         className="bg-destructive/10 hover:bg-destructive/20 px-3 py-1 rounded flex items-center gap-2"

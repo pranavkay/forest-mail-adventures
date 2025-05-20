@@ -1,4 +1,3 @@
-
 // This is a Gmail service implementation using the Google API
 import { Email, Contact } from '@/data/mockData';
 
@@ -24,9 +23,22 @@ interface GmailEmail {
   internalDate: string;
 }
 
-// Helper function to extract the access token from stored token
-const extractAccessToken = (token: string): string => {
-  console.log('Extracting access token from:', token.substring(0, 10) + '...');
+// Helper function to get the access token (simplified version)
+const getAccessToken = (): string | null => {
+  // Try to get the direct access token first (most reliable)
+  const directAccessToken = localStorage.getItem('gmail_access_token');
+  if (directAccessToken) {
+    console.log('Using direct access token from localStorage');
+    return directAccessToken;
+  }
+  
+  // Fall back to the composite token
+  const token = localStorage.getItem('gmail_token');
+  if (!token) {
+    console.log('No token found in localStorage');
+    return null;
+  }
+  
   try {
     // Try parsing as JSON first (for our composite token)
     const parsedToken = JSON.parse(token);
@@ -37,21 +49,47 @@ const extractAccessToken = (token: string): string => {
   } catch (e) {
     // If parsing fails, the token might already be a raw access token
     console.log('Token is not in JSON format, using as raw access token');
+    return token;
   }
-  return token; // Return as is if it's already a raw token
-};
+  
+  console.log('Could not extract access token from available tokens');
+  return null;
+}
 
 // Fetch emails from Gmail API
 export const fetchEmails = async (token: string): Promise<Email[]> => {
-  if (!token) {
-    console.error('No token provided for Gmail API');
+  console.log('fetchEmails called with token type:', typeof token);
+  
+  // Get the access token regardless of what was passed in
+  const accessToken = getAccessToken();
+  
+  if (!accessToken) {
+    console.error('No access token available for Gmail API');
     return [];
   }
 
   try {
-    // Extract access token from stored token
-    const accessToken = extractAccessToken(token);
     console.log('Using access token for Gmail API:', accessToken.substring(0, 10) + '...');
+    
+    // Verify the token is active with a userinfo check
+    try {
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      
+      if (!userInfoResponse.ok) {
+        console.error('User info check failed:', userInfoResponse.status, userInfoResponse.statusText);
+        throw new Error(`Token validation failed: ${userInfoResponse.status} ${userInfoResponse.statusText}`);
+      }
+      
+      const userInfo = await userInfoResponse.json();
+      console.log('User info check succeeded:', userInfo.email);
+    } catch (error) {
+      console.error('Error validating token:', error);
+      throw new Error('Authentication failed - please login again');
+    }
     
     // Get list of emails from Gmail API
     const response = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX', {
@@ -120,14 +158,15 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
 };
 
 export const sendEmail = async (token: string, email: any): Promise<boolean> => {
-  if (!token) {
-    console.error('No token provided for Gmail API');
+  // Get the access token regardless of what was passed in
+  const accessToken = getAccessToken();
+  
+  if (!accessToken) {
+    console.error('No access token available for Gmail API');
     throw new Error('Authentication required to send emails');
   }
 
   try {
-    // Extract access token from stored token
-    const accessToken = extractAccessToken(token);
     console.log('Using access token for sending email:', accessToken.substring(0, 10) + '...');
 
     // Create the email in RFC 2822 format

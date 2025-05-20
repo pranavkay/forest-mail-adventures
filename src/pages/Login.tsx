@@ -30,8 +30,9 @@ const Login = () => {
     console.log('Google login successful:', tokenResponse);
     
     if (tokenResponse.access_token) {
-      // Save the raw access token for API calls
+      // Store the raw access token first for direct API use
       localStorage.setItem('gmail_access_token', tokenResponse.access_token);
+      console.log('Saved raw access token:', tokenResponse.access_token.substring(0, 10) + '...');
       
       // Get user info to create a more complete token object
       try {
@@ -43,18 +44,20 @@ const Login = () => {
         
         if (userInfoResponse.ok) {
           const userInfo = await userInfoResponse.json();
+          console.log('User info retrieved:', userInfo);
           
-          // Create a composite token object with access_token and scopes
+          // Create a composite token object with access_token and userInfo
           const compositeToken = JSON.stringify({
             access_token: tokenResponse.access_token,
             scope: tokenResponse.scope,
             user_info: userInfo
           });
           
-          // Save the composite token for our application use
+          // Save the raw token directly too for backup
+          console.log('Saving composite token to localStorage');
           localStorage.setItem('gmail_token', compositeToken);
           
-          // Make sure to login with the composite token
+          // Login with the composite token
           login(compositeToken);
           
           toast({
@@ -62,7 +65,7 @@ const Login = () => {
             description: "Welcome to Forest Mail",
           });
           
-          // Simulate loading email data
+          // Navigate to home
           setTimeout(() => {
             setIsLoading(false);
             navigate('/');
@@ -72,13 +75,25 @@ const Login = () => {
         }
       } catch (error) {
         console.error('Error fetching user info:', error);
+        
+        // Even if user info fails, try to proceed with just the access token
+        const simpleToken = JSON.stringify({
+          access_token: tokenResponse.access_token,
+          scope: tokenResponse.scope
+        });
+        
+        localStorage.setItem('gmail_token', simpleToken);
+        login(simpleToken);
+        
         setIsLoading(false);
         
         toast({
-          title: "Login failed",
-          description: "Unable to get user information",
-          variant: "destructive"
+          title: "Login partially successful",
+          description: "Got your access token but couldn't retrieve your profile",
+          variant: "default"
         });
+        
+        navigate('/');
       }
     } else {
       console.error('No access token received from Google login');
@@ -109,7 +124,7 @@ const Login = () => {
     onError: handleGoogleError,
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
     flow: 'implicit',
-    // Remove ux_mode as it's not supported in implicit flow
+    // Removed ux_mode as it's not supported in implicit flow
   });
 
   return (
