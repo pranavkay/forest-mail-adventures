@@ -1,4 +1,3 @@
-
 // This is a Gmail service implementation using the Google API
 import { Email, Contact } from '@/data/mockData';
 
@@ -26,7 +25,14 @@ interface GmailEmail {
 
 // Fetch emails from Gmail API
 export const fetchEmails = async (token: string): Promise<Email[]> => {
+  if (!token) {
+    console.error('No token provided for Gmail API');
+    return [];
+  }
+
   try {
+    console.log('Fetching emails from Gmail API with token');
+    
     // Get list of emails from Gmail API
     const response = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX', {
       headers: {
@@ -37,10 +43,18 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
     if (!response.ok) {
       const errorDetails = await response.json();
       console.error('Gmail API error:', errorDetails);
+      
+      // Check if we have an auth error
+      if (response.status === 401) {
+        console.error('Authentication error - token may be invalid or expired');
+        throw new Error('Authentication error - please login again');
+      }
+      
       throw new Error(`Failed to fetch emails: ${response.statusText}`);
     }
 
     const data = await response.json();
+    console.log('Gmail API response received:', data);
     
     if (!data.messages || !Array.isArray(data.messages)) {
       console.log('No messages found in Gmail account');
@@ -69,12 +83,16 @@ export const fetchEmails = async (token: string): Promise<Email[]> => {
     return transformGmailData(validEmails);
   } catch (error) {
     console.error('Error fetching emails:', error);
-    // Return mock data as fallback
-    return mockTransformGmailData([]);
+    throw error; // Rethrow to allow the component to handle it
   }
 };
 
 export const sendEmail = async (token: string, email: any): Promise<boolean> => {
+  if (!token) {
+    console.error('No token provided for Gmail API');
+    throw new Error('Authentication required to send emails');
+  }
+
   try {
     // Create the email in RFC 2822 format
     const emailContent = [
@@ -91,6 +109,8 @@ export const sendEmail = async (token: string, email: any): Promise<boolean> => 
       .replace(/\//g, '_')
       .replace(/=+$/, '');
 
+    console.log('Sending email via Gmail API');
+    
     // Send the email via Gmail API
     const response = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',

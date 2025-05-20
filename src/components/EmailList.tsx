@@ -4,11 +4,12 @@ import { emails as mockEmails, Email } from '@/data/mockData';
 import { format } from 'date-fns';
 import { fetchEmails } from '@/services/gmailService';
 import { useUser } from '@/context/UserContext';
+import { toast } from '@/hooks/use-toast';
 
 export const EmailList = () => {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
-  const [emails, setEmails] = useState<Email[]>(mockEmails);
+  const [emails, setEmails] = useState<Email[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { token } = useUser();
   
@@ -17,14 +18,35 @@ export const EmailList = () => {
       if (token) {
         setIsLoading(true);
         try {
+          console.log('Loading emails from Gmail API');
           const gmailEmails = await fetchEmails(token);
-          // In a real application, we might merge or replace local emails
-          setEmails([...gmailEmails, ...mockEmails]);
+          
+          // If we successfully got Gmail emails, use those
+          // Otherwise, fall back to mock data
+          if (gmailEmails && gmailEmails.length > 0) {
+            console.log(`Loaded ${gmailEmails.length} emails from Gmail`);
+            setEmails(gmailEmails);
+          } else {
+            console.log('No Gmail emails found, using mock data');
+            setEmails(mockEmails);
+          }
         } catch (error) {
           console.error('Failed to fetch emails:', error);
+          toast({
+            title: "Couldn't load emails",
+            description: "There was a problem connecting to your email. Using sample data instead.",
+            variant: "destructive",
+          });
+          
+          // Fall back to mock data on error
+          setEmails(mockEmails);
         } finally {
           setIsLoading(false);
         }
+      } else {
+        // No token, use mock data
+        console.log('No auth token, using mock data');
+        setEmails(mockEmails);
       }
     };
     
