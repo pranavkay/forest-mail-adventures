@@ -274,11 +274,11 @@ export const EmailList: React.FC<EmailListProps> = ({
             </div>
             <div>
               <div className="font-medium text-forest-berry">
-                {selectedEmail.from.name}
+                {getWhimsicalName(selectedEmail.from.email)}
               </div>
               <div className="text-sm text-forest-bark/70">{selectedEmail.from.email}</div>
-              <div className="text-xs text-forest-leaf font-medium">
-                {getWhimsicalName(selectedEmail.from.email)}
+              <div className="text-xs text-forest-bark/80">
+                {selectedEmail.from.name}
               </div>
             </div>
           </div>
@@ -335,11 +335,11 @@ export const EmailList: React.FC<EmailListProps> = ({
                 </div>
                 <div>
                   <div className={`font-medium ${!email.read ? 'font-bold text-forest-bark' : 'text-forest-berry'}`}>
-                    {email.from.name}
+                    {getWhimsicalName(email.from.email)}
                   </div>
                   <div className="text-xs text-forest-bark/70">{email.from.email}</div>
-                  <div className="text-xs text-forest-leaf font-medium">
-                    {getWhimsicalName(email.from.email)}
+                  <div className="text-xs text-forest-bark/80">
+                    {email.from.name}
                   </div>
                 </div>
               </div>
