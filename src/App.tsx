@@ -22,10 +22,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = token !== null || accessToken !== null;
   
   if (!isAuthenticated) {
-    // Don't log sensitive information in production
-    if (import.meta.env.DEV) {
-      console.log('Not authenticated, redirecting to login');
-    }
     return <Navigate to="/login" replace />;
   }
   
@@ -33,14 +29,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => {
-  // Only log origin in development
-  if (import.meta.env.DEV) {
-    console.log('Current origin (add this to Google OAuth Redirect URIs):', window.location.origin);
-  }
-  
   // Validate that we have a client ID - show error screen if missing
   if (!GOOGLE_CLIENT_ID) {
-    console.error('CRITICAL: Missing Google Client ID. Please set VITE_GOOGLE_CLIENT_ID environment variable.');
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 p-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg border border-red-200 p-8 text-center">
@@ -51,18 +41,14 @@ const App = () => {
           <p className="text-gray-600">
             Please make sure the <code className="bg-red-100 text-red-800 px-2 py-1 rounded text-sm font-mono">VITE_GOOGLE_CLIENT_ID</code> environment variable is set correctly.
           </p>
-          <div className="mt-6 text-left text-sm text-gray-500 bg-gray-50 p-4 rounded">
-            <h2 className="font-semibold text-gray-700 mb-2">How to fix this:</h2>
-            <p>You need to provide your Google OAuth Client ID to the application. If you need help getting one, you can ask me to guide you through the process.</p>
-          </div>
         </div>
       </div>
     );
   }
 
-  // Validate Client ID format, but don't crash the app
+  // Validate Client ID format for production
   if (!/^[0-9]+-[a-zA-Z0-9]+\.apps\.googleusercontent\.com$/.test(GOOGLE_CLIENT_ID)) {
-    console.error('CRITICAL: Invalid Google Client ID format. The application may not work correctly.');
+    console.error('Invalid Google Client ID format detected');
   }
 
   return (

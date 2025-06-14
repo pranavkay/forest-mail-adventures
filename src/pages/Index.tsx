@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
@@ -66,9 +67,8 @@ const Index = () => {
   // Check if token exists and validate if it has Gmail scopes
   useEffect(() => {
     if (token) {
-      // Use the new helper function to check for Gmail permissions
+      // Use the helper function to check for Gmail permissions
       const hasPermissions = hasGmailPermissions();
-      console.log('Gmail permissions check:', hasPermissions);
       
       // Show setup guide if permissions are missing
       setShowSetupGuide(!hasPermissions);
@@ -100,7 +100,6 @@ const Index = () => {
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Searching for:', searchQuery);
     // Reset to page 1 when searching
     handlePageChange(1);
     
@@ -118,8 +117,6 @@ const Index = () => {
     const params = new URLSearchParams(location.search);
     params.set('page', newPage.toString());
     navigate(`?${params.toString()}`);
-    
-    // We don't need to call setPage here as the useEffect will handle that
   };
   
   return (

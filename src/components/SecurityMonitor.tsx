@@ -28,7 +28,8 @@ export const SecurityMonitor = () => {
     setSuspiciousActivity(isSuspicious);
     setShowAlert(isSuspicious);
     
-    // Set up periodic security checks
+    // Set up periodic security checks (less frequent in production)
+    const checkInterval = import.meta.env.DEV ? 30000 : 300000; // 30s dev, 5min prod
     const interval = setInterval(() => {
       const currentEvents = JSON.parse(localStorage.getItem('security_events') || '[]');
       setSecurityEvents(currentEvents);
@@ -38,7 +39,7 @@ export const SecurityMonitor = () => {
         setSuspiciousActivity(true);
         setShowAlert(true);
       }
-    }, 30000); // Check every 30 seconds
+    }, checkInterval);
     
     return () => clearInterval(interval);
   }, [suspiciousActivity]);
@@ -56,7 +57,8 @@ export const SecurityMonitor = () => {
     window.location.reload();
   };
 
-  if (!showAlert && !import.meta.env.DEV) {
+  // In production, only show alerts for actual security issues
+  if (!showAlert && (!import.meta.env.DEV || !securityEvents.length)) {
     return null;
   }
 
