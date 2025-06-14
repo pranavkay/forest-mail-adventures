@@ -1,3 +1,4 @@
+
 // Import types from our types file instead of creating circular references
 import { Contact, Email } from '@/types/email';
 
@@ -10,7 +11,7 @@ export const folders = [
   { id: 'trash', name: 'Compost Heap', icon: 'trash-2', count: 0 },
 ];
 
-// Mock contacts data
+// Mock contacts data with consistent woodland names
 export const contacts: Contact[] = [
   {
     id: 'c1',
@@ -43,8 +44,59 @@ export const contacts: Contact[] = [
     woodlandName: 'Clever Squirrel',
     animal: 'squirrel',
     avatar: '/avatar-squirrel.png'
+  },
+  {
+    id: 'c5',
+    name: 'Sophia Willow',
+    email: 'sophia@forestmail.com',
+    woodlandName: 'Silent Cat',
+    animal: 'cat',
+    avatar: '/avatar-cat.png'
+  },
+  {
+    id: 'c6',
+    name: 'Mason Pine',
+    email: 'mason@forestmail.com',
+    woodlandName: 'Loyal Dog',
+    animal: 'dog',
+    avatar: '/avatar-dog.png'
+  },
+  {
+    id: 'c7',
+    name: 'Isabella Cedar',
+    email: 'isabella@forestmail.com',
+    woodlandName: 'Singing Bird',
+    animal: 'bird',
+    avatar: '/avatar-bird.png'
   }
 ];
+
+// Helper function to get consistent woodland name for any contact
+export const getWoodlandName = (contact: Contact): string => {
+  return contact.woodlandName || 'Forest Friend';
+};
+
+// Helper function to get woodland name by animal type (for emails from unknown contacts)
+export const getWoodlandNameByAnimal = (animal: string): string => {
+  switch (animal) {
+    case 'fox':
+      return 'Swift Fox';
+    case 'rabbit':
+      return 'Nimble Rabbit';
+    case 'owl':
+      return 'Wise Owl';
+    case 'squirrel':
+      return 'Clever Squirrel';
+    case 'cat':
+      return 'Silent Cat';
+    case 'dog':
+      return 'Loyal Dog';
+    case 'bird':
+      return 'Singing Bird';
+    default:
+      return 'Forest Friend';
+  }
+};
 
 // Export Contact type for re-use
 export type { Contact };

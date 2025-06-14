@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { contacts } from '@/data/mockData';
+import { contacts, getWoodlandName } from '@/data/mockData';
 import { Mail, Phone, Search, Menu } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { ContactList } from '@/components/ContactList';
@@ -142,7 +142,7 @@ const Contacts = () => {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-forest-bark truncate">{contact.name}</h3>
                         <p className="text-xs md:text-sm text-forest-bark/70 italic truncate">
-                          {getWoodlandName(contact.animal)}
+                          {getWoodlandName(contact)}
                         </p>
                         <p className="text-xs md:text-sm text-forest-bark/70 truncate">{contact.email}</p>
                         <div className="mt-2 md:mt-3 flex flex-wrap gap-2 md:gap-3">
@@ -178,27 +178,6 @@ const Contacts = () => {
       </div>
     </div>
   );
-};
-
-const getWoodlandName = (animal: string): string => {
-  switch (animal) {
-    case 'fox':
-      return 'Wise Fox';
-    case 'rabbit':
-      return 'Swift Rabbit';
-    case 'owl':
-      return 'Sage Owl';
-    case 'squirrel':
-      return 'Nimble Squirrel';
-    case 'cat':
-      return 'Silent Cat';
-    case 'dog':
-      return 'Loyal Dog';
-    case 'bird':
-      return 'Singing Bird';
-    default:
-      return 'Forest Friend';
-  }
 };
 
 export default Contacts;
