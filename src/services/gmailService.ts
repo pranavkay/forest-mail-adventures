@@ -1,7 +1,9 @@
+
 // This is a Gmail service implementation using the Google API
 import { Email, Contact } from '@/types/email';
 import TokenSecurity from '@/utils/security';
 import InputValidator from '@/utils/validation';
+import XSSProtection from '@/utils/xss-protection';
 
 interface GmailEmail {
   id: string;
@@ -205,8 +207,8 @@ export const sendEmail = async (token: string, email: any): Promise<boolean> => 
 
   try {
     // Sanitize email content
-    const sanitizedSubject = InputValidator.sanitizeHtml(email.subject);
-    const sanitizedBody = InputValidator.sanitizeHtml(email.body);
+    const sanitizedSubject = XSSProtection.sanitizeHTML(email.subject);
+    const sanitizedBody = XSSProtection.sanitizeHTML(email.body);
 
     // Create the email in RFC 2822 format
     const emailContent = [
