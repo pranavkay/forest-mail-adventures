@@ -1,4 +1,3 @@
-
 // This is a Gmail service implementation using the Google API
 import { Email, Contact } from '@/types/email';
 import TokenSecurity from '@/utils/security';
@@ -61,14 +60,11 @@ const getAccessToken = (): string | null => {
 const apiRateLimiter = InputValidator.createRateLimiter(100, 60000); // 100 requests per minute
 
 // Fetch emails from Gmail API with pagination support
-export const fetchEmails = async (token: string, startIndex = 0, maxResults = 10): Promise<Email[]> => {
+export const fetchEmails = async (accessToken: string, startIndex = 0, maxResults = 10): Promise<Email[]> => {
   // Check rate limit
   if (!apiRateLimiter('gmail-fetch')) {
     throw new Error('Rate limit exceeded. Please wait before making more requests.');
   }
-
-  // Get the access token securely
-  const accessToken = getAccessToken();
   
   if (!accessToken) {
     throw new Error('Authentication required - please login again');
@@ -176,7 +172,7 @@ export const fetchEmails = async (token: string, startIndex = 0, maxResults = 10
   }
 };
 
-export const sendEmail = async (token: string, email: any): Promise<boolean> => {
+export const sendEmail = async (accessToken: string, email: any): Promise<boolean> => {
   // Validate input
   const emailValidation = InputValidator.validateEmail(email.to);
   if (!emailValidation.isValid) {
@@ -198,9 +194,6 @@ export const sendEmail = async (token: string, email: any): Promise<boolean> => 
     throw new Error('Rate limit exceeded. Please wait before sending more emails.');
   }
 
-  // Get the access token securely
-  const accessToken = getAccessToken();
-  
   if (!accessToken) {
     throw new Error('Authentication required to send emails');
   }
