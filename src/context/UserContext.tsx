@@ -23,9 +23,22 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   // Initialize tokens securely on mount
   useEffect(() => {
-    const secureToken = TokenSecurity.getToken('gmail_token');
-    if (secureToken && TokenSecurity.validateTokenFormat(secureToken)) {
-      setToken(secureToken);
+    try {
+      const secureToken = TokenSecurity.getToken('gmail_token');
+      if (secureToken && TokenSecurity.validateTokenFormat(secureToken)) {
+        setToken(secureToken);
+      } else if (secureToken) {
+        // Invalid token format detected
+        TokenSecurity.logSecurityEvent('invalid_token_format', { 
+          tokenLength: secureToken.length 
+        });
+        TokenSecurity.clearAllTokens();
+      }
+    } catch (error) {
+      TokenSecurity.logSecurityEvent('token_initialization_error', { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      TokenSecurity.clearAllTokens();
     }
   }, []);
 
@@ -36,6 +49,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         // Validate token format first
         if (!TokenSecurity.validateTokenFormat(token)) {
           console.error('Invalid token format detected');
+          TokenSecurity.logSecurityEvent('invalid_token_format');
           logout();
           return;
         }
@@ -58,72 +72,109 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         }
         
         setIsAuthenticated(true);
+        TokenSecurity.logSecurityEvent('successful_token_validation');
       } catch (e) {
         // If it's not a JSON object, it might be a JWT or another format
         if (import.meta.env.DEV) {
           console.log('Failed to parse token as JSON, using as raw token');
         }
         setTokenObject(null);
-        // Store the raw token as access token as well for consistency
-        TokenSecurity.storeToken('gmail_access_token', token);
-        setIsAuthenticated(true);
+        
+        try {
+          // Store the raw token as access token as well for consistency
+          TokenSecurity.storeToken('gmail_access_token', token);
+          setIsAuthenticated(true);
+          TokenSecurity.logSecurityEvent('raw_token_accepted');
+        } catch (error) {
+          TokenSecurity.logSecurityEvent('token_storage_error', { 
+            error: error instanceof Error ? error.message : 'Unknown error' 
+          });
+          logout();
+        }
       }
     } else {
       setTokenObject(null);
       setIsAuthenticated(false);
       // Clear access token if main token is cleared
-      localStorage.removeItem('gmail_access_token');
+      TokenSecurity.removeToken('gmail_access_token');
     }
   }, [token]);
 
   const login = (newToken: string) => {
-    if (!TokenSecurity.validateTokenFormat(newToken)) {
-      console.error('Invalid token format provided to login');
-      return;
+    try {
+      if (!TokenSecurity.validateTokenFormat(newToken)) {
+        console.error('Invalid token format provided to login');
+        TokenSecurity.logSecurityEvent('login_invalid_token_format');
+        return;
+      }
+      
+      if (import.meta.env.DEV) {
+        console.log('Saving new token securely');
+      }
+      
+      TokenSecurity.storeToken('gmail_token', newToken);
+      setToken(newToken);
+      setIsAuthenticated(true);
+      TokenSecurity.logSecurityEvent('successful_login');
+    } catch (error) {
+      TokenSecurity.logSecurityEvent('login_error', { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      throw error;
     }
-    
-    if (import.meta.env.DEV) {
-      console.log('Saving new token securely');
-    }
-    TokenSecurity.storeToken('gmail_token', newToken);
-    setToken(newToken);
-    setIsAuthenticated(true);
   };
 
   const logout = () => {
-    // Clear all token data securely
-    if (import.meta.env.DEV) {
-      console.log('Clearing all secure token data for logout');
+    try {
+      // Clear all token data securely
+      if (import.meta.env.DEV) {
+        console.log('Clearing all secure token data for logout');
+      }
+      TokenSecurity.clearAllTokens();
+      setToken(null);
+      setTokenObject(null);
+      setIsAuthenticated(false);
+      TokenSecurity.logSecurityEvent('successful_logout');
+      navigate('/login');
+    } catch (error) {
+      TokenSecurity.logSecurityEvent('logout_error', { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      // Force navigation even if there's an error
+      navigate('/login');
     }
-    TokenSecurity.clearAllTokens();
-    setToken(null);
-    setTokenObject(null);
-    setIsAuthenticated(false);
-    navigate('/login');
   };
   
   // Get the raw access token for API calls
   const getAccessToken = (): string | null => {
-    // First check if we have a direct access token
-    const directAccessToken = TokenSecurity.getToken('gmail_access_token');
-    if (directAccessToken && TokenSecurity.validateTokenFormat(directAccessToken)) {
-      return directAccessToken;
+    try {
+      // First check if we have a direct access token
+      const directAccessToken = TokenSecurity.getToken('gmail_access_token');
+      if (directAccessToken && TokenSecurity.validateTokenFormat(directAccessToken)) {
+        return directAccessToken;
+      }
+      
+      // Then try to extract from the composite token
+      if (tokenObject && tokenObject.access_token) {
+        return tokenObject.access_token;
+      }
+      
+      // If we have a raw token but couldn't parse it, try using it directly
+      if (token && !tokenObject && TokenSecurity.validateTokenFormat(token)) {
+        return token;
+      }
+      
+      if (import.meta.env.DEV) {
+        console.log('No valid access token found');
+      }
+      TokenSecurity.logSecurityEvent('access_token_not_found');
+      return null;
+    } catch (error) {
+      TokenSecurity.logSecurityEvent('access_token_retrieval_error', { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      return null;
     }
-    
-    // Then try to extract from the composite token
-    if (tokenObject && tokenObject.access_token) {
-      return tokenObject.access_token;
-    }
-    
-    // If we have a raw token but couldn't parse it, try using it directly
-    if (token && !tokenObject && TokenSecurity.validateTokenFormat(token)) {
-      return token;
-    }
-    
-    if (import.meta.env.DEV) {
-      console.log('No valid access token found');
-    }
-    return null;
   };
   
   // Helper function to check if token has Gmail permissions

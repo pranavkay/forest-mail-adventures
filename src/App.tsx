@@ -10,12 +10,19 @@ import Login from "./pages/Login";
 import Contacts from "./pages/Contacts";
 import NotFound from "./pages/NotFound";
 
-// Get Google Client ID from environment variable with fallback
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "541980333383-47b9k63tve1lfobs9pkltv245gf9ddp5.apps.googleusercontent.com";
+// Get Google Client ID from environment variable - NO FALLBACK for security
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-// Validate that we have a client ID
+// Validate that we have a client ID - fail hard if missing
 if (!GOOGLE_CLIENT_ID) {
-  console.error('Missing Google Client ID. Please set VITE_GOOGLE_CLIENT_ID environment variable.');
+  console.error('CRITICAL: Missing Google Client ID. Please set VITE_GOOGLE_CLIENT_ID environment variable.');
+  throw new Error('Application cannot start without Google Client ID. Please configure VITE_GOOGLE_CLIENT_ID environment variable.');
+}
+
+// Validate Client ID format
+if (!/^[0-9]+-[a-zA-Z0-9]+\.apps\.googleusercontent\.com$/.test(GOOGLE_CLIENT_ID)) {
+  console.error('CRITICAL: Invalid Google Client ID format.');
+  throw new Error('Invalid Google Client ID format. Please check your VITE_GOOGLE_CLIENT_ID environment variable.');
 }
 
 // Protected route component with improved token verification
