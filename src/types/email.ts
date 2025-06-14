@@ -18,9 +18,21 @@ export interface BaseEmail {
   read: boolean;
 }
 
-// Extend the Email interface to include labels
+// Extend the Email interface to include labels and threading
 export interface EmailWithLabels extends BaseEmail {
   labels?: string[];
+  threadId?: string;
+}
+
+// Thread interface to group emails
+export interface EmailThread {
+  id: string;
+  subject: string;
+  emails: EmailWithLabels[];
+  latestEmail: EmailWithLabels;
+  messageCount: number;
+  hasUnread: boolean;
+  participants: Contact[];
 }
 
 // For backward compatibility

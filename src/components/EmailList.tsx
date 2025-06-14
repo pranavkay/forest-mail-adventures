@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { fetchEmails } from '@/data/mockData';
-import { Email } from '@/types/email';
+import { Email, EmailThread } from '@/types/email';
+import { groupEmailsIntoThreads, isThread } from '@/utils/emailThreading';
 import { useUser } from '@/context/UserContext';
-import { RefreshCw, ChevronLeft, ChevronRight, Mail, Reply, ReplyAll } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight, Mail, Reply, ReplyAll, MessageSquare } from 'lucide-react';
 import { 
   Pagination, 
   PaginationContent, 
@@ -32,21 +33,24 @@ export const EmailList: React.FC<EmailListProps> = ({
   onPageChange,
 }) => {
   const [emails, setEmails] = useState<Email[]>([]);
+  const [threads, setThreads] = useState<EmailThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [totalEmails, setTotalEmails] = useState(0);
-  const [refreshKey, setRefreshKey] = useState(0); // Used to trigger refresh
+  const [refreshKey, setRefreshKey] = useState(0);
   const [replyMode, setReplyMode] = useState<'reply' | 'replyAll' | null>(null);
   const [replyText, setReplyText] = useState('');
   const { token } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Function to load emails
+  // Function to load emails and group them into threads
   const loadEmails = async () => {
     if (!token) {
       setEmails([]);
+      setThreads([]);
       setLoading(false);
       return;
     }
@@ -61,13 +65,11 @@ export const EmailList: React.FC<EmailListProps> = ({
 
       // Filter emails based on folder and search query
       const filteredEmails = allEmails.filter(email => {
-        // Filter by folder
         if (folderId && folderId !== 'inbox') {
           const hasMatchingLabel = email.labels?.includes(folderId.toLowerCase());
           if (!hasMatchingLabel) return false;
         }
 
-        // If search query exists, filter by that too
         if (searchQuery) {
           const query = searchQuery.toLowerCase();
           const searchableContent = [
@@ -83,9 +85,13 @@ export const EmailList: React.FC<EmailListProps> = ({
         return true;
       });
 
+      // Group emails into threads
+      const emailThreads = groupEmailsIntoThreads(filteredEmails);
+      
       setEmails(filteredEmails);
-      setTotalEmails(filteredEmails.length + (page - 1) * pageSize); // Rough estimate
-      console.log('Filtered emails for display:', filteredEmails);
+      setThreads(emailThreads);
+      setTotalEmails(emailThreads.length + (page - 1) * pageSize);
+      console.log('Created email threads:', emailThreads);
     } catch (err) {
       console.error('Error loading emails:', err);
       setError(err instanceof Error ? err.message : 'Failed to load emails');
@@ -115,7 +121,6 @@ export const EmailList: React.FC<EmailListProps> = ({
       'Ranger', 'Storyteller', 'Forager', 'Watcher', 'Guide'
     ];
     
-    // Use email as a seed for deterministic but unique selection
     const charSum = email.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
     const firstName = firstNames[charSum % firstNames.length];
     const secondName = secondNames[(charSum * 13) % secondNames.length];
@@ -123,14 +128,12 @@ export const EmailList: React.FC<EmailListProps> = ({
     return `${firstName} ${secondName}`;
   };
 
-  // Generate a woodland creature emoji based on email
   const getWoodlandEmoji = (email: string) => {
     const emojis = ['🦊', '🦉', '🦡', '🐿️', '🦝', '🐇', '🦔', '🐿️', '🍄', '🦌', '🐺', '🦢', '🦅', '🦇', '🐸'];
     const charSum = email.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
     return emojis[charSum % emojis.length];
   };
   
-  // Generate a pastel color based on email
   const getPastelColor = (email: string) => {
     const colors = [
       '#FFD6E0', '#FFEFCF', '#D4F0F0', '#E2F0CB', '#E0DAFE', 
@@ -151,27 +154,41 @@ export const EmailList: React.FC<EmailListProps> = ({
     setRefreshKey(prevKey => prevKey + 1);
   };
 
-  // Handle opening an email
+  // Handle opening a thread or email
+  const handleOpenThread = (thread: EmailThread) => {
+    if (isThread(thread)) {
+      setSelectedThread(thread);
+      setSelectedEmail(null);
+    } else {
+      setSelectedEmail(thread.latestEmail);
+      setSelectedThread(null);
+    }
+    setReplyMode(null);
+    setReplyText('');
+    
+    // Mark thread emails as read if not already
+    if (thread.hasUnread) {
+      const updatedThreads = threads.map(t => 
+        t.id === thread.id 
+          ? { ...t, hasUnread: false, emails: t.emails.map(e => ({ ...e, read: true })) }
+          : t
+      );
+      setThreads(updatedThreads);
+    }
+  };
+
+  // Handle opening a specific email from a thread
   const handleOpenEmail = (email: Email) => {
     setSelectedEmail(email);
-    setReplyMode(null); // Reset reply mode when opening a new email
-    setReplyText(''); // Clear reply text
-    
-    // Mark as read if not already
-    if (!email.read) {
-      // In a real app, we would update the server here
-      const updatedEmails = emails.map(e => 
-        e.id === email.id ? { ...e, read: true } : e
-      );
-      setEmails(updatedEmails);
-    }
+    setSelectedThread(null);
+    setReplyMode(null);
+    setReplyText('');
   };
 
   // Handle reply to the current email
   const handleReply = (type: 'reply' | 'replyAll') => {
     setReplyMode(type);
     
-    // Pre-populate reply with greeting
     const greeting = `Hello ${selectedEmail?.from.name.split(' ')[0] || 'there'},\n\n`;
     setReplyText(greeting);
   };
@@ -185,21 +202,19 @@ export const EmailList: React.FC<EmailListProps> = ({
       description: "Your reply butterfly has fluttered away to the recipient.",
     });
     
-    // In a real app, we would send the reply here
     console.log('Reply to:', selectedEmail.from.email);
     console.log('Reply text:', replyText);
     
-    // Close reply mode
     setReplyMode(null);
     setReplyText('');
-    
-    // Close email view
     setSelectedEmail(null);
+    setSelectedThread(null);
   };
 
   // Handle closing the email detail view
   const handleCloseEmail = () => {
     setSelectedEmail(null);
+    setSelectedThread(null);
     setReplyMode(null);
     setReplyText('');
   };
@@ -209,30 +224,23 @@ export const EmailList: React.FC<EmailListProps> = ({
     const date = new Date(dateString);
     const now = new Date();
     
-    // If it's today, show time
     if (date.toDateString() === now.toDateString()) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
     
-    // If it's this year, show month and day
     if (date.getFullYear() === now.getFullYear()) {
       return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
     
-    // Otherwise show full date
     return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   // Enhanced email body formatting
   const formatEmailBody = (body: string) => {
-    // Replace URLs with hyperlinks
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const withLinks = body.replace(urlRegex, '<a href="$1" class="text-forest-leaf underline hover:text-forest-berry" target="_blank" rel="noopener noreferrer">$1</a>');
     
-    // Convert line breaks to HTML
     const withLineBreaks = withLinks.replace(/\n/g, '<br />');
-    
-    // Split paragraphs
     const paragraphs = withLineBreaks.split('<br /><br />');
     
     return (
@@ -262,7 +270,7 @@ export const EmailList: React.FC<EmailListProps> = ({
     );
   }
 
-  if (loading && !emails.length) {
+  if (loading && !threads.length) {
     return (
       <div className="p-6 forest-card">
         <div className="flex justify-center items-center">
@@ -273,7 +281,7 @@ export const EmailList: React.FC<EmailListProps> = ({
     );
   }
 
-  if (error && !emails.length) {
+  if (error && !threads.length) {
     return (
       <div className="p-6 forest-card bg-red-50 border border-red-300">
         <h3 className="text-lg font-bold text-red-800">Error loading messages</h3>
@@ -288,7 +296,7 @@ export const EmailList: React.FC<EmailListProps> = ({
     );
   }
 
-  if (!emails.length) {
+  if (!threads.length) {
     return (
       <div className="p-6 forest-card text-center">
         <img src="/empty-folder.png" alt="Empty folder" className="mx-auto h-32 mb-4 opacity-60" />
@@ -306,14 +314,91 @@ export const EmailList: React.FC<EmailListProps> = ({
     );
   }
 
-  // Email detail view
+  // Thread detail view
+  if (selectedThread) {
+    return (
+      <div className="forest-card overflow-hidden backdrop-blur-sm animate-fade-in woodland-shadow">
+        <div className="flex justify-between items-center p-4 border-b border-forest-moss">
+          <button onClick={handleCloseEmail} className="font-medium text-forest-leaf hover:underline flex items-center gap-1">
+            <ChevronLeft className="h-4 w-4" />
+            Back to {folderId === 'sent' ? 'Sent Items' : 'Mailbox'}
+          </button>
+          <div className="text-sm text-forest-bark/70 flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            {selectedThread.messageCount} messages
+          </div>
+        </div>
+        
+        <div className="p-6">
+          <h2 className="text-2xl font-bold mb-4 text-forest-bark">{selectedThread.subject}</h2>
+          
+          <div className="space-y-4">
+            {selectedThread.emails.map((email, index) => (
+              <Card key={email.id} className="overflow-hidden shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center">
+                      <div className="relative mr-3">
+                        <div 
+                          className="w-8 h-8 rounded-full flex items-center justify-center"
+                          style={{ 
+                            backgroundColor: getPastelColor(email.from.email),
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                          }}
+                        >
+                          <span className="text-sm">{getWoodlandEmoji(email.from.email)}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="font-medium text-forest-berry text-sm">
+                          {getWhimsicalName(email.from.email)}
+                        </div>
+                        <div className="text-xs text-forest-bark/70">{email.from.email}</div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-forest-bark/70">
+                      {formatDate(email.received)}
+                    </div>
+                  </div>
+                  
+                  <div className="text-sm text-forest-bark/90 bg-gradient-to-b from-forest-cream/40 to-white/60 p-3 rounded-lg">
+                    {formatEmailBody(email.body)}
+                  </div>
+                  
+                  {index === selectedThread.emails.length - 1 && (
+                    <div className="flex gap-2 mt-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="bg-forest-cream hover:bg-forest-moss/30 border-forest-leaf/20 text-forest-bark flex items-center gap-1"
+                        onClick={() => {
+                          setSelectedEmail(email);
+                          setSelectedThread(null);
+                          handleReply('reply');
+                        }}
+                      >
+                        <Reply size={14} />
+                        Reply
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Single email detail view
   if (selectedEmail) {
     return (
       <div className="forest-card overflow-hidden backdrop-blur-sm animate-fade-in woodland-shadow">
         <div className="flex justify-between items-center p-4 border-b border-forest-moss">
           <button onClick={handleCloseEmail} className="font-medium text-forest-leaf hover:underline flex items-center gap-1">
             <ChevronLeft className="h-4 w-4" />
-            Back to {folderId === 'sent' ? 'Sent Butterflies' : 'Inbox'}
+            Back to {folderId === 'sent' ? 'Sent Items' : 'Mailbox'}
           </button>
           <div className="text-sm text-forest-bark/70">
             {formatDate(selectedEmail.received)}
@@ -411,12 +496,12 @@ export const EmailList: React.FC<EmailListProps> = ({
     );
   }
 
-  // Email list view
+  // Thread list view
   return (
     <div>
       <div className="mb-2 flex justify-between items-center">
         <div className="text-sm text-forest-bark/70">
-          {emails.length} message{emails.length !== 1 ? 's' : ''} {searchQuery && `matching "${searchQuery}"`}
+          {threads.length} conversation{threads.length !== 1 ? 's' : ''} {searchQuery && `matching "${searchQuery}"`}
         </div>
         <button 
           onClick={handleRefresh} 
@@ -428,12 +513,12 @@ export const EmailList: React.FC<EmailListProps> = ({
       </div>
 
       <div className="space-y-3">
-        {emails.map((email, index) => (
+        {threads.map((thread, index) => (
           <div 
-            key={email.id}
-            onClick={() => handleOpenEmail(email)}
+            key={thread.id}
+            onClick={() => handleOpenThread(thread)}
             className={`forest-card p-4 cursor-pointer transition-all hover:woodland-shadow hover:-translate-y-1 animate-pop ${
-              !email.read ? 'bg-forest-moss/40 border-l-4 border-l-forest-leaf' : 'bg-forest-cream/80'
+              thread.hasUnread ? 'bg-forest-moss/40 border-l-4 border-l-forest-leaf' : 'bg-forest-cream/80'
             }`}
             style={{ 
               animationDelay: `${index * 0.05}s`,
@@ -444,40 +529,52 @@ export const EmailList: React.FC<EmailListProps> = ({
               <div className="flex items-center">
                 <div className="relative mr-3">
                   <div 
-                    className={`w-10 h-10 rounded-full flex items-center justify-center ${!email.read ? 'animate-float' : ''}`}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center ${thread.hasUnread ? 'animate-float' : ''}`}
                     style={{ 
-                      backgroundColor: getPastelColor(email.from.email),
+                      backgroundColor: getPastelColor(thread.latestEmail.from.email),
                       boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
                     }}
                   >
-                    <span className="text-xl">{getWoodlandEmoji(email.from.email)}</span>
+                    <span className="text-xl">{getWoodlandEmoji(thread.latestEmail.from.email)}</span>
                   </div>
                 </div>
                 <div>
-                  <div className={`font-medium ${!email.read ? 'font-bold text-forest-bark' : 'text-forest-berry'}`}>
-                    {getWhimsicalName(email.from.email)}
+                  <div className={`font-medium ${thread.hasUnread ? 'font-bold text-forest-bark' : 'text-forest-berry'}`}>
+                    {getWhimsicalName(thread.latestEmail.from.email)}
+                    {thread.participants.length > 1 && (
+                      <span className="text-xs text-forest-bark/60 ml-1">
+                        +{thread.participants.length - 1} other{thread.participants.length > 2 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
-                  <div className="text-xs text-forest-bark/70">{email.from.email}</div>
+                  <div className="text-xs text-forest-bark/70">{thread.latestEmail.from.email}</div>
                   <div className="text-xs text-forest-bark/80">
-                    {email.from.name}
+                    {thread.latestEmail.from.name}
                   </div>
                 </div>
               </div>
-              <div className="text-xs text-forest-bark/70">
-                {formatDate(email.received)}
+              <div className="flex flex-col items-end">
+                <div className="text-xs text-forest-bark/70">
+                  {formatDate(thread.latestEmail.received)}
+                </div>
+                {isThread(thread) && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <MessageSquare className="h-3 w-3 text-forest-bark/60" />
+                    <span className="text-xs text-forest-bark/60">{thread.messageCount}</span>
+                  </div>
+                )}
               </div>
             </div>
-            <div className={`mt-2 ${!email.read ? 'font-semibold text-forest-bark' : 'text-forest-bark/90'}`}>
-              {email.subject}
+            <div className={`mt-2 ${thread.hasUnread ? 'font-semibold text-forest-bark' : 'text-forest-bark/90'}`}>
+              {thread.subject}
             </div>
             <div className="mt-1 text-sm text-forest-bark/70 line-clamp-2 bg-white/40 p-2 rounded-lg">
-              {email.body.length > 120 ? `${email.body.substring(0, 120)}...` : email.body}
+              {thread.latestEmail.body.length > 120 ? `${thread.latestEmail.body.substring(0, 120)}...` : thread.latestEmail.body}
             </div>
           </div>
         ))}
       </div>
       
-      {/* Pagination using shadcn/ui component */}
       <Pagination className="mt-6">
         <PaginationContent>
           <PaginationItem>
@@ -507,7 +604,7 @@ export const EmailList: React.FC<EmailListProps> = ({
             </PaginationLink>
           </PaginationItem>
           
-          {emails.length === pageSize && (
+          {threads.length === pageSize && (
             <PaginationItem>
               <PaginationLink 
                 onClick={() => onPageChange(page + 1)}
@@ -520,8 +617,8 @@ export const EmailList: React.FC<EmailListProps> = ({
           
           <PaginationItem>
             <PaginationNext 
-              onClick={() => emails.length === pageSize && onPageChange(page + 1)}
-              className={`forest-btn-outline ${emails.length < pageSize ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-forest-moss/30'}`}
+              onClick={() => threads.length === pageSize && onPageChange(page + 1)}
+              className={`forest-btn-outline ${threads.length < pageSize ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-forest-moss/30'}`}
             />
           </PaginationItem>
         </PaginationContent>
