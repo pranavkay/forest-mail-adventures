@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
@@ -9,6 +8,24 @@ import { GmailSetupGuide } from '@/components/GmailSetupGuide';
 import { useUser } from '@/context/UserContext';
 import { toast } from '@/hooks/use-toast';
 import { Menu } from 'lucide-react';
+
+// Helper function to get friendly folder names
+const getFolderDisplayName = (folderId: string): string => {
+  switch (folderId) {
+    case 'inbox':
+      return 'Mailbox';
+    case 'sent':
+      return 'Sent Items';
+    case 'drafts':
+      return 'Drafts';
+    case 'archive':
+      return 'Archive';
+    case 'trash':
+      return 'Trash';
+    default:
+      return folderId.charAt(0).toUpperCase() + folderId.slice(1);
+  }
+};
 
 const Index = () => {
   const [activeGuide, setActiveGuide] = useState('new-email');
@@ -91,7 +108,7 @@ const Index = () => {
     if (searchQuery) {
       toast({
         title: `Searching for "${searchQuery}"`,
-        description: "Looking through the forest for your messages",
+        description: "Looking through your messages",
       });
     }
   };
@@ -127,14 +144,9 @@ const Index = () => {
           <header className="mb-6">
             <div className="forest-card p-4 md:p-6 mb-4">
               <h1 className="text-xl md:text-2xl font-bold text-forest-bark mb-2">
-                {currentFolder === 'inbox' ? 'Welcome to your Treehouse Deliveries' : 
-                 currentFolder === 'sent' ? 'Sent Butterflies' :
-                 currentFolder === 'drafts' ? 'Acorn Sketches' :
-                 currentFolder === 'archive' ? 'Hollow Logs' :
-                 currentFolder === 'trash' ? 'Compost Heap' :
-                 `Browsing ${currentFolder.charAt(0).toUpperCase() + currentFolder.slice(1)} Messages`}
+                {getFolderDisplayName(currentFolder)}
               </h1>
-              <p className="text-sm md:text-base text-forest-bark/70">Where your messages flutter and leaves gently fall</p>
+              <p className="text-sm md:text-base text-forest-bark/70">Your messages in a peaceful space</p>
             </div>
             
             {showSetupGuide && <GmailSetupGuide />}
@@ -142,7 +154,7 @@ const Index = () => {
             <form onSubmit={handleSearch} className="relative">
               <input 
                 type="text" 
-                placeholder="Search through the forest..." 
+                placeholder="Search your messages..." 
                 className="forest-input w-full pl-10 text-sm md:text-base"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

@@ -24,6 +24,24 @@ const getIconComponent = (iconName: string | undefined) => {
   }
 };
 
+// Map folder IDs to friendlier display names
+const getFolderDisplayName = (folderId: string): string => {
+  switch (folderId) {
+    case 'inbox':
+      return 'Mailbox';
+    case 'sent':
+      return 'Sent Items';
+    case 'drafts':
+      return 'Drafts';
+    case 'archive':
+      return 'Archive';
+    case 'trash':
+      return 'Trash';
+    default:
+      return folderId.charAt(0).toUpperCase() + folderId.slice(1);
+  }
+};
+
 export const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState('inbox');
@@ -32,8 +50,8 @@ export const Sidebar = () => {
   const { logout } = useUser();
   
   const mainLinks = [
-    { id: 'home', name: 'Forest Home', icon: <Mail className="w-5 h-5" />, path: '/' },
-    { id: 'contacts', name: 'Woodland Friends', icon: <Contact className="w-5 h-5" />, path: '/contacts' },
+    { id: 'home', name: 'Mail Home', icon: <Mail className="w-5 h-5" />, path: '/' },
+    { id: 'contacts', name: 'Contacts', icon: <Contact className="w-5 h-5" />, path: '/contacts' },
   ];
 
   const handleFolderSelect = (folderId: string) => {
@@ -44,7 +62,7 @@ export const Sidebar = () => {
     
     // Show a toast notification
     toast({
-      title: `${folders.find(f => f.id === folderId)?.name} selected`,
+      title: `${getFolderDisplayName(folderId)} selected`,
       description: "Viewing emails in this folder",
     });
   };
@@ -53,7 +71,7 @@ export const Sidebar = () => {
     logout();
     toast({
       title: "Logout successful",
-      description: "You have left the forest",
+      description: "You have been signed out",
     });
   };
   
@@ -92,7 +110,7 @@ export const Sidebar = () => {
         )}>
           {!collapsed && (
             <span className="text-sidebar-foreground text-sm font-semibold">
-              Main Paths
+              Navigation
             </span>
           )}
         </div>
@@ -127,7 +145,7 @@ export const Sidebar = () => {
         )}>
           {!collapsed && (
             <span className="text-sidebar-foreground text-sm font-semibold">
-              Tree Branches
+              Folders
             </span>
           )}
         </div>
@@ -151,7 +169,7 @@ export const Sidebar = () => {
               
               {!collapsed && (
                 <>
-                  <span className="ml-3 text-sm">{folder.name}</span>
+                  <span className="ml-3 text-sm">{getFolderDisplayName(folder.id)}</span>
                   {folder.count > 0 && (
                     <span className="ml-auto bg-white/20 text-xs px-2 py-0.5 rounded-full">
                       {folder.count}
@@ -180,7 +198,7 @@ export const Sidebar = () => {
           </div>
           
           {!collapsed && (
-            <span className="ml-3 text-sm">Leave Forest</span>
+            <span className="ml-3 text-sm">Sign Out</span>
           )}
         </button>
       </div>
@@ -193,7 +211,7 @@ export const Sidebar = () => {
           "text-xs text-forest-cream/70 italic",
           collapsed ? "hidden" : "block"
         )}>
-          A treehouse for your messages
+          A peaceful place for your messages
         </div>
       </div>
     </div>
