@@ -10,8 +10,13 @@ import Login from "./pages/Login";
 import Contacts from "./pages/Contacts";
 import NotFound from "./pages/NotFound";
 
-// Replace with your Google Client ID from Google Cloud Console
-const GOOGLE_CLIENT_ID = "541980333383-47b9k63tve1lfobs9pkltv245gf9ddp5.apps.googleusercontent.com";
+// Get Google Client ID from environment variable with fallback
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "541980333383-47b9k63tve1lfobs9pkltv245gf9ddp5.apps.googleusercontent.com";
+
+// Validate that we have a client ID
+if (!GOOGLE_CLIENT_ID) {
+  console.error('Missing Google Client ID. Please set VITE_GOOGLE_CLIENT_ID environment variable.');
+}
 
 // Protected route component with improved token verification
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -22,7 +27,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = token !== null || accessToken !== null;
   
   if (!isAuthenticated) {
-    console.log('Not authenticated, redirecting to login');
+    // Don't log sensitive information in production
+    if (import.meta.env.DEV) {
+      console.log('Not authenticated, redirecting to login');
+    }
     return <Navigate to="/login" replace />;
   }
   
@@ -30,8 +38,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => {
-  // Log the current origin which should be added to Google Cloud Console
-  console.log('Current origin (add this to Google OAuth Redirect URIs):', window.location.origin);
+  // Only log origin in development
+  if (import.meta.env.DEV) {
+    console.log('Current origin (add this to Google OAuth Redirect URIs):', window.location.origin);
+  }
   
   return (
     <BrowserRouter>

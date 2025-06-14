@@ -1,5 +1,7 @@
 // This is a Gmail service implementation using the Google API
 import { Email, Contact } from '@/types/email';
+import TokenSecurity from '@/utils/security';
+import InputValidator from '@/utils/validation';
 
 interface GmailEmail {
   id: string;
@@ -23,19 +25,17 @@ interface GmailEmail {
   internalDate: string;
 }
 
-// Helper function to get the access token (simplified version)
+// Helper function to get the access token securely
 const getAccessToken = (): string | null => {
   // Try to get the direct access token first (most reliable)
-  const directAccessToken = localStorage.getItem('gmail_access_token');
-  if (directAccessToken) {
-    console.log('Using direct access token from localStorage');
+  const directAccessToken = TokenSecurity.getToken('gmail_access_token');
+  if (directAccessToken && TokenSecurity.validateTokenFormat(directAccessToken)) {
     return directAccessToken;
   }
   
   // Fall back to the composite token
-  const token = localStorage.getItem('gmail_token');
+  const token = TokenSecurity.getToken('gmail_token');
   if (!token) {
-    console.log('No token found in localStorage');
     return null;
   }
   
@@ -43,35 +43,36 @@ const getAccessToken = (): string | null => {
     // Try parsing as JSON first (for our composite token)
     const parsedToken = JSON.parse(token);
     if (parsedToken && parsedToken.access_token) {
-      console.log('Access token extracted from composite token');
       return parsedToken.access_token;
     }
   } catch (e) {
     // If parsing fails, the token might already be a raw access token
-    console.log('Token is not in JSON format, using as raw access token');
-    return token;
+    if (TokenSecurity.validateTokenFormat(token)) {
+      return token;
+    }
   }
   
-  console.log('Could not extract access token from available tokens');
   return null;
 }
 
+// Rate limiter for API calls
+const apiRateLimiter = InputValidator.createRateLimiter(100, 60000); // 100 requests per minute
+
 // Fetch emails from Gmail API with pagination support
 export const fetchEmails = async (token: string, startIndex = 0, maxResults = 10): Promise<Email[]> => {
-  console.log('fetchEmails called with token type:', typeof token);
-  console.log(`Fetching emails with pagination: startIndex=${startIndex}, maxResults=${maxResults}`);
-  
-  // Get the access token regardless of what was passed in
+  // Check rate limit
+  if (!apiRateLimiter('gmail-fetch')) {
+    throw new Error('Rate limit exceeded. Please wait before making more requests.');
+  }
+
+  // Get the access token securely
   const accessToken = getAccessToken();
   
   if (!accessToken) {
-    console.error('No access token available for Gmail API');
-    return [];
+    throw new Error('Authentication required - please login again');
   }
 
   try {
-    console.log('Using access token for Gmail API:', accessToken.substring(0, 10) + '...');
-    
     // Verify the token is active with a userinfo check
     try {
       const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -81,14 +82,14 @@ export const fetchEmails = async (token: string, startIndex = 0, maxResults = 10
       });
       
       if (!userInfoResponse.ok) {
-        console.error('User info check failed:', userInfoResponse.status, userInfoResponse.statusText);
-        throw new Error(`Token validation failed: ${userInfoResponse.status} ${userInfoResponse.statusText}`);
+        throw new Error('Authentication failed - please login again');
       }
       
       const userInfo = await userInfoResponse.json();
-      console.log('User info check succeeded:', userInfo.email);
+      if (import.meta.env.DEV) {
+        console.log('User info check succeeded:', userInfo.email);
+      }
     } catch (error) {
-      console.error('Error validating token:', error);
       throw new Error('Authentication failed - please login again');
     }
     
@@ -100,32 +101,19 @@ export const fetchEmails = async (token: string, startIndex = 0, maxResults = 10
     });
 
     if (!inboxResponse.ok) {
-      // Try to get error details
-      let errorMessage = `HTTP Error: ${inboxResponse.status} ${inboxResponse.statusText}`;
-      try {
-        const errorDetails = await inboxResponse.json();
-        console.error('Gmail API error details:', errorDetails);
-        if (errorDetails.error && errorDetails.error.message) {
-          errorMessage = errorDetails.error.message;
-        }
-      } catch (e) {
-        console.error('Could not parse error response:', e);
-      }
-      
-      // Check if we have an auth error
+      // Handle specific error cases without exposing sensitive information
       if (inboxResponse.status === 401) {
-        console.error('Authentication error - token may be invalid or expired');
         throw new Error('Authentication failed - please login again');
       } else if (inboxResponse.status === 403) {
-        console.error('Permission error - insufficient permissions to access Gmail');
         throw new Error('Permission denied - email scope may not be enabled');
+      } else if (inboxResponse.status === 429) {
+        throw new Error('Rate limit exceeded - please try again later');
       }
       
-      throw new Error(`Failed to fetch emails: ${errorMessage}`);
+      throw new Error('Failed to fetch emails - please try again');
     }
 
     const inboxData = await inboxResponse.json();
-    console.log('Gmail API inbox response received:', inboxData);
     
     // Also fetch sent emails with the same pagination
     const sentResponse = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}&startIndex=${startIndex}&labelIds=SENT`, {
@@ -135,7 +123,6 @@ export const fetchEmails = async (token: string, startIndex = 0, maxResults = 10
     });
     
     const sentData = sentResponse.ok ? await sentResponse.json() : { messages: [] };
-    console.log('Gmail API sent response received:', sentData);
     
     // Combine inbox and sent messages, ensuring no duplicates
     const allMessages = [];
@@ -152,24 +139,26 @@ export const fetchEmails = async (token: string, startIndex = 0, maxResults = 10
     }
     
     if (allMessages.length === 0) {
-      console.log('No messages found in Gmail account');
       return [];
     }
 
-    // Fetch details for each email
+    // Fetch details for each email with error handling
     const emailDetailsPromises = allMessages.map(async (message: { id: string }) => {
-      const detailResponse = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
+      try {
+        const detailResponse = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+        
+        if (!detailResponse.ok) {
+          return null;
         }
-      });
-      
-      if (!detailResponse.ok) {
-        console.error(`Failed to fetch details for email ${message.id}`);
+        
+        return await detailResponse.json();
+      } catch (error) {
         return null;
       }
-      
-      return await detailResponse.json();
     });
 
     const emailDetails = await Promise.all(emailDetailsPromises);
@@ -177,30 +166,55 @@ export const fetchEmails = async (token: string, startIndex = 0, maxResults = 10
     
     return transformGmailData(validEmails);
   } catch (error) {
-    console.error('Error fetching emails:', error);
-    throw error; // Rethrow to allow the component to handle it
+    // Re-throw known errors, wrap unknown errors
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('An unexpected error occurred while fetching emails');
   }
 };
 
 export const sendEmail = async (token: string, email: any): Promise<boolean> => {
-  // Get the access token regardless of what was passed in
+  // Validate input
+  const emailValidation = InputValidator.validateEmail(email.to);
+  if (!emailValidation.isValid) {
+    throw new Error(emailValidation.error || 'Invalid recipient email');
+  }
+  
+  const subjectValidation = InputValidator.validateSubject(email.subject);
+  if (!subjectValidation.isValid) {
+    throw new Error(subjectValidation.error || 'Invalid subject');
+  }
+  
+  const bodyValidation = InputValidator.validateEmailBody(email.body);
+  if (!bodyValidation.isValid) {
+    throw new Error(bodyValidation.error || 'Invalid email body');
+  }
+
+  // Check rate limit
+  if (!apiRateLimiter('gmail-send')) {
+    throw new Error('Rate limit exceeded. Please wait before sending more emails.');
+  }
+
+  // Get the access token securely
   const accessToken = getAccessToken();
   
   if (!accessToken) {
-    console.error('No access token available for Gmail API');
     throw new Error('Authentication required to send emails');
   }
 
   try {
-    console.log('Using access token for sending email:', accessToken.substring(0, 10) + '...');
+    // Sanitize email content
+    const sanitizedSubject = InputValidator.sanitizeHtml(email.subject);
+    const sanitizedBody = InputValidator.sanitizeHtml(email.body);
 
     // Create the email in RFC 2822 format
     const emailContent = [
       `From: ${email.from}`,
       `To: ${email.to}`,
-      `Subject: ${email.subject}`,
+      `Subject: ${sanitizedSubject}`,
       '',
-      email.body
+      sanitizedBody
     ].join('\r\n');
 
     // Encode the email to base64
@@ -208,8 +222,6 @@ export const sendEmail = async (token: string, email: any): Promise<boolean> => 
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
-
-    console.log('Sending email via Gmail API');
     
     // Send the email via Gmail API
     const response = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
@@ -224,15 +236,23 @@ export const sendEmail = async (token: string, email: any): Promise<boolean> => 
     });
 
     if (!response.ok) {
-      const errorDetails = await response.json();
-      console.error('Gmail API error:', errorDetails);
-      throw new Error(`Failed to send email: ${response.statusText}`);
+      if (response.status === 401) {
+        throw new Error('Authentication failed - please login again');
+      } else if (response.status === 403) {
+        throw new Error('Permission denied - cannot send emails');
+      } else if (response.status === 429) {
+        throw new Error('Rate limit exceeded - please try again later');
+      }
+      
+      throw new Error('Failed to send email - please try again');
     }
 
     return true;
   } catch (error) {
-    console.error('Error sending email:', error);
-    throw error;
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('An unexpected error occurred while sending email');
   }
 };
 

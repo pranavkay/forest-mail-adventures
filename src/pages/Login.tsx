@@ -5,6 +5,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { Leaf } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 import { toast } from '@/hooks/use-toast';
+import TokenSecurity from '@/utils/security';
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -13,12 +14,12 @@ const Login = () => {
 
   // Clear any previous login data on component mount
   useEffect(() => {
-    localStorage.clear(); // Clear all data to ensure a fresh start
+    TokenSecurity.clearAllTokens(); // Use secure cleanup
   }, []);
 
   // Check if user is already logged in
   useEffect(() => {
-    const token = localStorage.getItem('gmail_token');
+    const token = TokenSecurity.getToken('gmail_token');
     if (token) {
       navigate('/');
     }
@@ -27,12 +28,13 @@ const Login = () => {
   const handleGoogleSuccess = async (tokenResponse) => {
     setIsLoading(true);
     
-    console.log('Google login successful:', tokenResponse);
+    if (import.meta.env.DEV) {
+      console.log('Google login successful');
+    }
     
     if (tokenResponse.access_token) {
-      // Store the raw access token first for direct API use
-      localStorage.setItem('gmail_access_token', tokenResponse.access_token);
-      console.log('Saved raw access token:', tokenResponse.access_token.substring(0, 10) + '...');
+      // Store the raw access token securely
+      TokenSecurity.storeToken('gmail_access_token', tokenResponse.access_token);
       
       // Get user info to create a more complete token object
       try {
@@ -44,7 +46,10 @@ const Login = () => {
         
         if (userInfoResponse.ok) {
           const userInfo = await userInfoResponse.json();
-          console.log('User info retrieved:', userInfo);
+          
+          if (import.meta.env.DEV) {
+            console.log('User info retrieved successfully');
+          }
           
           // Create a composite token object with access_token and userInfo
           const compositeToken = JSON.stringify({
@@ -53,11 +58,7 @@ const Login = () => {
             user_info: userInfo
           });
           
-          // Save the raw token directly too for backup
-          console.log('Saving composite token to localStorage');
-          localStorage.setItem('gmail_token', compositeToken);
-          
-          // Login with the composite token
+          // Login with the composite token (will be stored securely)
           login(compositeToken);
           
           toast({
@@ -74,7 +75,7 @@ const Login = () => {
           throw new Error('Failed to fetch user info');
         }
       } catch (error) {
-        console.error('Error fetching user info:', error);
+        console.error('Error during login process');
         
         // Even if user info fails, try to proceed with just the access token
         const simpleToken = JSON.stringify({
@@ -82,9 +83,7 @@ const Login = () => {
           scope: tokenResponse.scope
         });
         
-        localStorage.setItem('gmail_token', simpleToken);
         login(simpleToken);
-        
         setIsLoading(false);
         
         toast({
@@ -108,7 +107,7 @@ const Login = () => {
   };
 
   const handleGoogleError = (error) => {
-    console.error('Gmail login failed:', error);
+    console.error('Gmail login failed');
     setIsLoading(false);
     
     toast({
@@ -118,18 +117,12 @@ const Login = () => {
     });
   };
   
-  // Get current origin for proper OAuth redirect
-  const origin = window.location.origin;
-  console.log("Current origin for OAuth:", origin);
-  
   // Use the useGoogleLogin hook with proper configuration for implicit flow
-  // This will ensure it works across different deployment environments
   const googleLogin = useGoogleLogin({
     onSuccess: handleGoogleSuccess,
     onError: handleGoogleError,
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
     flow: 'implicit'
-    // Remove redirect_uri as it's not supported in implicit flow
   });
 
   return (
